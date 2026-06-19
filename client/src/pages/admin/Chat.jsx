@@ -3,7 +3,7 @@ import { db } from '../../services/firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where, updateDoc, doc } from 'firebase/firestore'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
-import { FiSend, FiUser, FiMessageSquare, FiChevronLeft, FiCpu, FiToggleLeft, FiToggleRight } from 'react-icons/fi'
+import { FiSend, FiUser, FiMessageSquare, FiChevronLeft, FiCpu, FiToggleLeft, FiToggleRight, FiX } from 'react-icons/fi'
 
 export default function AdminChat() {
   const [conversations, setConversations] = useState([])
@@ -13,6 +13,7 @@ export default function AdminChat() {
   const [loading, setLoading] = useState(false)
   const [showSidebar, setShowSidebar] = useState(true)
   const [aiEnabled, setAiEnabled] = useState(true)
+  const [viewImage, setViewImage] = useState(null)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -29,7 +30,7 @@ export default function AdminChat() {
           userMap[msg.userId] = {
             userId: msg.userId,
             userName: msg.userName,
-            lastMessage: msg.text,
+            lastMessage: msg.imageUrl ? '📷 [Gambar]' : msg.text,
             unread: msg.sender === 'user' && !msg.read ? 1 : 0,
             hasAI: msg.isAI || false,
           }
@@ -93,6 +94,14 @@ export default function AdminChat() {
 
   return (
     <div className="p-4 sm:p-6">
+      {viewImage && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setViewImage(null)}>
+          <button onClick={() => setViewImage(null)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white z-10">
+            <FiX size={28} />
+          </button>
+          <img src={viewImage} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg cursor-default" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <button onClick={toggleAI}
@@ -171,7 +180,7 @@ export default function AdminChat() {
               <div className="flex-1 overflow-y-auto p-3 space-y-3">
                 {messages.map(msg => (
                   <div key={msg.id} className={`flex ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] ${msg.sender === 'admin' ? 'order-1' : 'order-1'}`}>
+                    <div className={`max-w-[80%]`}>
                       {msg.sender !== 'user' && (
                         <div className="flex items-center gap-1.5 mb-1">
                           <div className={`w-4 h-4 rounded-full flex items-center justify-center ${msg.isAI ? 'bg-purple-500/20' : 'bg-blue-500/20'}`}>
@@ -187,7 +196,13 @@ export default function AdminChat() {
                             : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-br-md'
                           : 'bg-white/[0.05] text-gray-200 border border-white/10 rounded-bl-md'
                       }`}>
-                        <p className="text-xs whitespace-pre-wrap">{msg.text}</p>
+                        {msg.imageUrl && (
+                          <div className="mb-2 cursor-pointer" onClick={() => setViewImage(msg.imageUrl)}>
+                            <img src={msg.imageUrl} alt="Gambar" className="max-w-full rounded-lg max-h-40 object-cover hover:opacity-90 transition-opacity" />
+                          </div>
+                        )}
+                        {msg.text && <p className="text-xs whitespace-pre-wrap">{msg.text}</p>}
+                        {!msg.text && msg.imageUrl && <p className="text-[10px] text-gray-400">[Gambar]</p>}
                         <p className={`text-[10px] mt-1 ${msg.sender === 'admin' ? (msg.isAI ? 'text-purple-300' : 'text-blue-200') : 'text-gray-500'}`}>
                           {msg.createdAt?.toDate?.().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) || '...'}
                         </p>
