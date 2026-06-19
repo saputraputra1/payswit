@@ -1,0 +1,24 @@
+{
+  "name": "Payswit",
+  "short_name": "Payswit",
+  "description": "Platform terpercaya untuk convert PayPal ke Rupiah, top up PayPal, dan jasa pembayaran credit card.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["finance", "business"],
+  "lang": "id"
+}
