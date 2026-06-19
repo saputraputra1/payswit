@@ -4,7 +4,7 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { db } from '../services/firebase';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Mail, Wallet, Clock, Hourglass } from 'lucide-react';
+import { FiUser, FiMail, FiWallet, FiClock } from 'react-icons/fi';
 
 export default function Profile() {
   const { profile } = useAuth();
@@ -41,10 +41,10 @@ export default function Profile() {
 
       <div className="card space-y-3">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center"><User className="w-6 h-6 text-primary-600" /></div>
+          <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center"><FiUser className="w-6 h-6 text-primary-600" /></div>
           <div>
             <p className="font-semibold text-lg">{profile?.name || 'User'}</p>
-            <p className="text-sm text-gray-500 flex items-center gap-1"><Mail className="w-3 h-3" /> {profile?.email}</p>
+            <p className="text-sm text-gray-500 flex items-center gap-1"><FiMail className="w-3 h-3" /> {profile?.email}</p>
           </div>
         </div>
         <div className="bg-primary-50 rounded-lg p-4">
@@ -55,7 +55,7 @@ export default function Profile() {
 
       {hasPending && queue && queue.total > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 flex items-start gap-3">
-          <Hourglass className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+          <FiClock className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
           <div className="text-sm text-amber-800">
             <p className="font-medium">Antrian: {queue.total} transaksi (estimasi {formatEstimate(queue.estimatedMinutes)})</p>
             <p className="text-xs text-amber-600 mt-0.5">Rata-rata {queue.avgMinutesPerTx} menit per transaksi</p>
@@ -64,7 +64,7 @@ export default function Profile() {
       )}
 
       <div className="card">
-        <h2 className="font-semibold mb-4 flex items-center gap-2"><Clock className="w-4 h-4" /> Semua Transaksi</h2>
+        <h2 className="font-semibold mb-4 flex items-center gap-2"><FiClock className="w-4 h-4" /> Semua Transaksi</h2>
         {txs.length === 0 ? (
           <p className="text-center py-6 text-gray-400">Belum ada transaksi</p>
         ) : (

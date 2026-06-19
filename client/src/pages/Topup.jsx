@@ -5,7 +5,7 @@ import { db } from '../services/firebase';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
-import { PlusCircle, DollarSign, Copy, Check, Building2, Wallet, Hourglass } from 'lucide-react';
+import { FiPlus, FiCopy, FiCheck, FiHome, FiWallet, FiClock } from 'react-icons/fi';
 
 const nominalList = [100000, 250000, 500000, 1000000, 2500000, 5000000];
 
@@ -99,14 +99,14 @@ export default function Topup() {
           )}
 
           <button onClick={handleTopup} disabled={loading || !nominal} className="btn-primary w-full flex items-center justify-center gap-2">
-            <PlusCircle className="w-4 h-4" /> {loading ? 'Memproses...' : 'Buat Permintaan Top Up'}
+            <FiPlus className="w-4 h-4" /> {loading ? 'Memproses...' : 'Buat Permintaan Top Up'}
           </button>
         </div>
       ) : (
         <div className="card space-y-4">
           <div className="text-center">
             <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Check className="w-7 h-7 text-green-600" />
+              <FiCheck className="w-7 h-7 text-green-600" />
             </div>
             <h2 className="text-xl font-bold text-green-700">Permintaan Dibuat!</h2>
             <p className="text-sm text-gray-500 mt-1">Transfer ke rekening admin di bawah ini</p>
@@ -121,7 +121,7 @@ export default function Topup() {
                   <p className="font-semibold">BCA</p>
                 </div>
                 <button onClick={() => copyText('BCA', 'bank')} className="text-primary-600 hover:text-primary-700">
-                  {copied === 'bank' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied === 'bank' ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
                 </button>
               </div>
               <div className="flex items-center justify-between">
@@ -130,7 +130,7 @@ export default function Topup() {
                   <p className="font-mono font-bold text-lg tracking-wider">1234567890</p>
                 </div>
                 <button onClick={() => copyText('1234567890', 'norek')} className="text-primary-600 hover:text-primary-700">
-                  {copied === 'norek' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied === 'norek' ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
                 </button>
               </div>
               <div>
@@ -152,7 +152,7 @@ export default function Topup() {
 
           {queue && queue.total > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-sm text-amber-800">
-              <Hourglass className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <FiClock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium">Antrian: {queue.total} transaksi</p>
                 <p className="text-xs text-amber-600">Estimasi diproses dalam ~{queue.estimatedMinutes} menit</p>
@@ -164,7 +164,7 @@ export default function Topup() {
             <button onClick={() => { setLastTx(null); setNominal(''); }} className="btn-outline flex-1">Buat Lagi</button>
             <Link to={`/tracking/${lastTx.id}`} className="px-4 py-2.5 bg-white/5 border border-white/10 text-white font-medium rounded-xl hover:bg-white/[0.08] transition-colors text-sm text-center">Lihat Tracking</Link>
             <a href="/chat" className="btn-primary flex-1 text-center flex items-center justify-center gap-1">
-              <Building2 className="w-4 h-4" /> Chat CS
+              <FiHome className="w-4 h-4" /> Chat CS
             </a>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function Topup() {
 
       {profile && (
         <div className="card flex items-center gap-3">
-          <Wallet className="w-5 h-5 text-primary-600" />
+          <FiWallet className="w-5 h-5 text-primary-600" />
           <div>
             <p className="text-xs text-gray-500">Saldo kamu</p>
             <p className="font-bold">${(profile.balance || 0).toFixed(2)}</p>

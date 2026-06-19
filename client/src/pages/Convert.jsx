@@ -5,7 +5,7 @@ import { db } from '../services/firebase';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
-import { Repeat, Send, DollarSign, Check, Copy, Hourglass } from 'lucide-react';
+import { FiRepeat, FiSend, FiDollarSign, FiCheck, FiCopy } from 'react-icons/fi';
 
 export default function Convert() {
   const { profile } = useAuth();
@@ -76,7 +76,7 @@ export default function Convert() {
           <div>
             <label className="block text-sm font-medium mb-1">Jumlah USD yang ingin ditukar</label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <FiDollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
               <input type="number" className="input-field pl-10" placeholder="Minimal $1" value={usd} onChange={e => setUsd(e.target.value)} min="1" step="0.01" />
             </div>
           </div>
@@ -96,14 +96,14 @@ export default function Convert() {
           </div>
 
           <button onClick={handleConvert} disabled={loading || !usd} className="btn-primary w-full flex items-center justify-center gap-2">
-            <Send className="w-4 h-4" /> {loading ? 'Memproses...' : 'Kirim Permintaan Convert'}
+            <FiSend className="w-4 h-4" /> {loading ? 'Memproses...' : 'Kirim Permintaan Convert'}
           </button>
         </div>
       ) : (
         <div className="card space-y-4">
           <div className="text-center">
             <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Check className="w-7 h-7 text-green-600" />
+              <FiCheck className="w-7 h-7 text-green-600" />
             </div>
             <h2 className="text-xl font-bold text-green-700">Permintaan Dibuat!</h2>
             <p className="text-sm text-gray-500 mt-1">Kirim PayPal ke akun admin berikut</p>
@@ -118,7 +118,7 @@ export default function Convert() {
                   <p className="font-mono font-bold text-lg">{lastTx.adminPaypal}</p>
                 </div>
                 <button onClick={() => copyText(lastTx.adminPaypal, 'paypal')} className="text-primary-600 hover:text-primary-700">
-                  {copied === 'paypal' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied === 'paypal' ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
                 </button>
               </div>
               <div>
@@ -140,7 +140,7 @@ export default function Convert() {
 
           {queue && queue.total > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-sm text-amber-800">
-              <Hourglass className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <FiClock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium">Antrian: {queue.total} transaksi</p>
                 <p className="text-xs text-amber-600">Estimasi diproses dalam ~{queue.estimatedMinutes} menit</p>

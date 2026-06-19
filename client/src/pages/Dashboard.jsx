@@ -4,7 +4,7 @@ import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/f
 import { db } from '../services/firebase'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { FiRepeat, FiPlus, FiArrowUp, FiArrowDown, FiClock, FiCheck, FiX, FiWallet, FiHourglass } from 'react-icons/fi'
+import { FiRepeat, FiPlus, FiArrowUp, FiArrowDown, FiClock, FiCheck, FiX, FiWallet } from 'react-icons/fi'
 
 export default function Dashboard() {
   const { profile } = useAuth()
