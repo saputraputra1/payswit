@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../services/firebase';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -161,6 +162,7 @@ export default function Topup() {
 
           <div className="flex gap-2">
             <button onClick={() => { setLastTx(null); setNominal(''); }} className="btn-outline flex-1">Buat Lagi</button>
+            <Link to={`/tracking/${lastTx.id}`} className="px-4 py-2.5 bg-white/5 border border-white/10 text-white font-medium rounded-xl hover:bg-white/[0.08] transition-colors text-sm text-center">Lihat Tracking</Link>
             <a href="/chat" className="btn-primary flex-1 text-center flex items-center justify-center gap-1">
               <Building2 className="w-4 h-4" /> Chat CS
             </a>

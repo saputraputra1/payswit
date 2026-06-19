@@ -14,6 +14,7 @@ import Topup from './pages/Topup'
 import CreditCard from './pages/CreditCard'
 import Chat from './pages/Chat'
 import Profile from './pages/Profile'
+import Tracking from './pages/Tracking'
 import AdminLayout from './pages/admin/Layout'
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminTransactions from './pages/admin/Transactions'
@@ -49,6 +50,7 @@ function AppRoutes() {
           <Route path="/credit-card" element={isAdmin ? <Navigate to="/admin" /> : <ProtectedRoute><CreditCard /></ProtectedRoute>} />
           <Route path="/chat" element={isAdmin ? <Navigate to="/admin" /> : <ProtectedRoute><Chat /></ProtectedRoute>} />
           <Route path="/profile" element={isAdmin ? <Navigate to="/admin" /> : <ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/tracking/:id" element={isAdmin ? <Navigate to="/admin" /> : <ProtectedRoute><Tracking /></ProtectedRoute>} />
 
           <Route path="/admin" element={<ProtectedRoute adminOnly><AdminLayout /></ProtectedRoute>}>
             <Route index element={<AdminDashboard />} />

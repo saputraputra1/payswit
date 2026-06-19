@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import api from '../services/api';
@@ -69,7 +70,7 @@ export default function Profile() {
         ) : (
           <div className="space-y-2">
             {txs.map(tx => (
-              <div key={tx.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <Link key={tx.id} to={`/tracking/${tx.id}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm">{tx.type === 'convert' ? `Convert $${tx.amount} → IDR` : `Top Up $${tx.total?.toFixed(2) || ''}`}</p>
                   <p className="text-xs text-gray-500">{tx.createdAt ? new Date(tx.createdAt).toLocaleString('id-ID') : '-'}</p>
@@ -81,7 +82,7 @@ export default function Profile() {
                   <p className="text-sm font-semibold">{tx.type === 'convert' ? `Rp ${(tx.total || 0).toLocaleString('id-ID')}` : `Rp ${(tx.amount || 0).toLocaleString('id-ID')}`}</p>
                   {statusBadge(tx.status)}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
