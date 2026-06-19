@@ -8,7 +8,7 @@ import {
   FiDollarSign, FiClock, FiCheck, FiX, FiTrendingUp, FiSend,
   FiUser, FiShield, FiShieldOff, FiPercent, FiSave, FiAlertTriangle,
   FiArrowUpRight, FiArrowDownLeft, FiCreditCard, FiCheckCircle, FiXCircle,
-  FiChevronLeft, FiMenu,
+  FiChevronLeft, FiMenu, FiUserPlus,
 } from 'react-icons/fi'
 
 function AnimatedCounter({ end, duration = 1500, prefix = '', suffix = '' }) {
@@ -110,29 +110,53 @@ function DashboardTab() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Realtime via polling (endpoint lewat server, auth adminOnly aman)
   useEffect(() => {
-    api.get('/admin/stats').then((res) => setStats(res.data)).catch(console.error).finally(() => setLoading(false))
+    let active = true
+    const fetchStats = () => {
+      api.get('/admin/stats')
+        .then((res) => { if (active) setStats(res.data) })
+        .catch(console.error)
+        .finally(() => { if (active) setLoading(false) })
+    }
+    fetchStats()
+    const t = setInterval(fetchStats, 8000) // refresh tiap 8 detik
+    return () => { active = false; clearInterval(t) }
   }, [])
 
   if (loading) return <LoadingSpinner />
 
   const cards = [
-    { label: 'Total Users', value: stats?.totalUsers || 0, icon: FiUsers, iconBg: 'bg-blue-500/10' },
-    { label: 'Total Transaksi', value: stats?.totalTransactions || 0, icon: FiRepeat, iconBg: 'bg-green-500/10' },
-    { label: 'Pending', value: stats?.pendingTransactions || 0, icon: FiClock, iconBg: 'bg-yellow-500/10' },
-    { label: 'Volume Hari Ini', value: stats?.todayVolume || 0, prefix: 'Rp ', icon: FiDollarSign, iconBg: 'bg-purple-500/10' },
+    { label: 'Total Users', value: stats?.totalUsers || 0, icon: FiUsers, iconBg: 'bg-blue-500/10', iconColor: 'text-blue-400' },
+    { label: 'Total Transaksi', value: stats?.totalTransactions || 0, icon: FiRepeat, iconBg: 'bg-green-500/10', iconColor: 'text-green-400' },
+    { label: 'Pending', value: stats?.pendingTransactions || 0, icon: FiClock, iconBg: 'bg-yellow-500/10', iconColor: 'text-yellow-400' },
+    { label: 'Selesai', value: stats?.completedTransactions || 0, icon: FiCheckCircle, iconBg: 'bg-emerald-500/10', iconColor: 'text-emerald-400' },
+    { label: 'User Baru Hari Ini', value: stats?.newUsersToday || 0, icon: FiUserPlus, iconBg: 'bg-purple-500/10', iconColor: 'text-purple-400' },
+    { label: 'Volume Hari Ini', value: stats?.todayVolume || 0, prefix: 'Rp ', icon: FiDollarSign, iconBg: 'bg-cyan-500/10', iconColor: 'text-cyan-400' },
   ]
+
+  const fmtDate = (v) => {
+    if (!v) return ''
+    const d = typeof v.toDate === 'function' ? v.toDate() : new Date(v)
+    if (isNaN(d.getTime())) return ''
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 text-[10px] text-green-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+        REALTIME
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {cards.map((card) => {
           const Icon = card.icon
           return (
             <div key={card.label} className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3 sm:p-5">
               <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-4">
                 <div className={`w-8 h-8 sm:w-10 sm:h-10 ${card.iconBg} rounded-lg sm:rounded-xl flex items-center justify-center`}>
-                  <Icon size={16} className="text-gray-300" />
+                  <Icon size={16} className={card.iconColor} />
                 </div>
                 <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wider">{card.label}</p>
               </div>
@@ -150,8 +174,8 @@ function DashboardTab() {
             <h3 className="font-bold text-white text-sm sm:text-base">Transaksi Terbaru</h3>
           </div>
           <div className="divide-y divide-white/[0.04]">
-            {(stats?.recentTransactions || []).slice(0, 5).map((tx, i) => (
-              <div key={i} className="flex items-center justify-between px-4 sm:px-6 py-3">
+            {(stats?.recentTransactions || []).map((tx) => (
+              <div key={tx.id} className="flex items-center justify-between px-4 sm:px-6 py-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${txTypeBg(tx.type)}`}>
                     {txIcon(tx.type)}
@@ -175,15 +199,18 @@ function DashboardTab() {
             <h3 className="font-bold text-white text-sm sm:text-base">User Baru</h3>
           </div>
           <div className="divide-y divide-white/[0.04]">
-            {(stats?.recentUsers || []).slice(0, 5).map((u, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 sm:px-6 py-3">
+            {(stats?.recentUsers || []).map((u) => (
+              <div key={u.id || u.uid} className="flex items-center gap-3 px-4 sm:px-6 py-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
                   {u.name?.[0] || 'U'}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-medium text-white text-xs sm:text-sm truncate">{u.name}</p>
                   <p className="text-[10px] sm:text-xs text-gray-500 truncate">{u.email}</p>
                 </div>
+                {u.createdAt && (
+                  <p className="text-[10px] text-gray-600 flex-shrink-0">{fmtDate(u.createdAt)}</p>
+                )}
               </div>
             ))}
             {(!stats?.recentUsers || stats.recentUsers.length === 0) && (
@@ -201,18 +228,27 @@ function TransactionsTab() {
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchTx() }, [])
-
-  async function fetchTx() {
-    try { const res = await api.get('/admin/transactions'); setTransactions(res.data) } catch (e) { console.error(e) }
-    setLoading(false)
-  }
+  // Realtime via polling (10 detik)
+  useEffect(() => {
+    let active = true
+    const fetchTx = async () => {
+      try {
+        const res = await api.get('/admin/transactions')
+        if (active) setTransactions(res.data)
+      } catch (e) { console.error(e) }
+      if (active) setLoading(false)
+    }
+    fetchTx()
+    const t = setInterval(fetchTx, 10000)
+    return () => { active = false; clearInterval(t) }
+  }, [])
 
   async function handleVerify(id, status) {
     try {
       await api.put(`/admin/transactions/${id}`, { status })
       toast.success(`Transaksi ${status === 'completed' ? 'disetujui' : 'ditolak'}`)
-      fetchTx()
+      // Update optimis agar UI langsung berubah tanpa tunggu polling
+      setTransactions(prev => prev.map(t => t.id === id ? { ...t, status } : t))
     } catch (e) { toast.error('Gagal') }
   }
 
@@ -296,19 +332,27 @@ function UsersTab() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchUsers() }, [])
-
-  async function fetchUsers() {
-    try { const res = await api.get('/admin/users'); setUsers(res.data) } catch (e) { console.error(e) }
-    setLoading(false)
-  }
+  // Realtime via polling (15 detik)
+  useEffect(() => {
+    let active = true
+    const fetchUsers = async () => {
+      try {
+        const res = await api.get('/admin/users')
+        if (active) setUsers(res.data)
+      } catch (e) { console.error(e) }
+      if (active) setLoading(false)
+    }
+    fetchUsers()
+    const t = setInterval(fetchUsers, 15000)
+    return () => { active = false; clearInterval(t) }
+  }, [])
 
   async function handleBan(uid, status) {
     const newStatus = status === 'active' ? 'banned' : 'active'
     try {
       await api.put(`/admin/users/${uid}`, { status: newStatus })
       toast.success(`User ${newStatus === 'banned' ? 'diblokir' : 'diaktifkan'}`)
-      fetchUsers()
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, status: newStatus } : u))
     } catch (e) { toast.error('Gagal') }
   }
 
@@ -316,7 +360,7 @@ function UsersTab() {
     try {
       await api.put(`/admin/users/${uid}`, { role })
       toast.success('Role diubah')
-      fetchUsers()
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role } : u))
     } catch (e) { toast.error('Gagal') }
   }
 
@@ -600,8 +644,16 @@ function txTypeLabel(type) {
 }
 
 function StatusBadge({ status }) {
-  const color = status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' : status === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
-  return <div className={`px-2 py-1 rounded-md border text-[10px] font-medium ${color}`}>{status}</div>
+  const map = {
+    completed: ['bg-green-500/10 text-green-400 border-green-500/20', 'Selesai'],
+    success: ['bg-green-500/10 text-green-400 border-green-500/20', 'Selesai'],
+    pending: ['bg-yellow-500/10 text-yellow-400 border-yellow-500/20', 'Pending'],
+    processing: ['bg-blue-500/10 text-blue-400 border-blue-500/20', 'Diproses'],
+    rejected: ['bg-red-500/10 text-red-400 border-red-500/20', 'Ditolak'],
+    failed: ['bg-red-500/10 text-red-400 border-red-500/20', 'Gagal'],
+  }
+  const [color, label] = map[status] || ['bg-gray-500/10 text-gray-400 border-gray-500/20', status]
+  return <div className={`px-2 py-1 rounded-md border text-[10px] font-medium ${color}`}>{label}</div>
 }
 
 function InfoBox({ label, value }) {

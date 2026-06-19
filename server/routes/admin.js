@@ -10,45 +10,61 @@ module.exports = function (db) {
 
   router.get('/stats', auth, adminOnly, async (req, res) => {
     try {
-      const usersSnap = await db.collection('users').get()
-      const txSnap = await db.collection('transactions').get()
-      const pendingSnap = await db
-        .collection('transactions')
-        .where('status', '==', 'pending')
-        .get()
+      // Ambil semua users & transaksi sekali, hitung statistik in-memory
+      // (menghindari multiple .where() yang butuh composite index Firestore)
+      const [usersSnap, txSnap] = await Promise.all([
+        db.collection('users').get(),
+        db.collection('transactions').get(),
+      ])
+
+      // Helper konversi createdAt (bisa Timestamp Firestore atau ISO string)
+      const toDate = (v) => {
+        if (!v) return new Date(0)
+        if (typeof v.toDate === 'function') {
+          try { return v.toDate() } catch { return new Date(0) }
+        }
+        const d = new Date(v)
+        return isNaN(d.getTime()) ? new Date(0) : d
+      }
 
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      const todaySnap = await db
-        .collection('transactions')
-        .where('status', '==', 'completed')
-        .where('createdAt', '>=', today)
-        .get()
 
+      const allTx = txSnap.docs.map((d) => normalizeTx(d))
+      let pending = 0
+      let completed = 0
       let todayVolume = 0
-      todaySnap.docs.forEach((doc) => {
-        todayVolume += doc.data().amountIDR || 0
+      allTx.forEach((d) => {
+        if (d.status === 'pending' || d.status === 'processing') {
+          pending++
+        } else if (d.status === 'completed' || d.status === 'success') {
+          completed++
+          if (toDate(d.createdAt) >= today) todayVolume += d.amountIDR || 0
+        }
       })
 
-      const recentTxSnap = await db
-        .collection('transactions')
-        .orderBy('createdAt', 'desc')
-        .limit(5)
-        .get()
+      // Urutkan transaksi terbaru (createdAt desc)
+      allTx.sort((a, b) => toDate(b.createdAt) - toDate(a.createdAt))
+      const recentTransactions = allTx.slice(0, 6)
 
-      const recentUsersSnap = await db
-        .collection('users')
-        .orderBy('createdAt', 'desc')
-        .limit(5)
-        .get()
+      // User baru hari ini + user terbaru
+      const allUsers = usersSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      let newUsersToday = 0
+      allUsers.forEach((d) => {
+        if (toDate(d.createdAt) >= today) newUsersToday++
+      })
+      allUsers.sort((a, b) => toDate(b.createdAt) - toDate(a.createdAt))
+      const recentUsers = allUsers.slice(0, 6)
 
       res.json({
         totalUsers: usersSnap.size,
         totalTransactions: txSnap.size,
-        pendingTransactions: pendingSnap.size,
+        pendingTransactions: pending,
+        completedTransactions: completed,
+        newUsersToday,
         todayVolume,
-        recentTransactions: recentTxSnap.docs.map((d) => normalizeTx(d)),
-        recentUsers: recentUsersSnap.docs.map((d) => d.data()),
+        recentTransactions,
+        recentUsers,
       })
     } catch (err) {
       res.status(500).json({ error: err.message })
