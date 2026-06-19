@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
 import toast from 'react-hot-toast'
 import { FiCreditCard, FiCheck, FiLock, FiGlobe, FiClock, FiShield, FiZap, FiStar, FiArrowRight, FiCopy } from 'react-icons/fi'
-import { BankIcon } from '../components/Icons'
+import { BankIcon, CardBrandIcon } from '../components/Icons'
 
 const PLANS = {
   standard: {
@@ -91,7 +91,7 @@ export default function CreditCard() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center px-4">
+      <div className="flex items-center justify-center px-4 py-8">
         <div className="max-w-md w-full text-center">
           <div className={`w-16 h-16 ${selectedPlan.bgColor} border ${selectedPlan.borderColor} rounded-2xl flex items-center justify-center mx-auto mb-4`}>
             <FiCheck size={32} className={selectedPlan.textColor} />
@@ -110,7 +110,7 @@ export default function CreditCard() {
             <div className="flex justify-between"><span className="text-gray-500">Biaya Admin</span><span className={`font-medium ${selectedPlan.textColor}`}>Rp {selectedPlan.adminFee.toLocaleString('id-ID')}</span></div>
             <div className="flex justify-between pt-2 border-t border-white/[0.06]"><span className="text-gray-400 font-medium">Total</span><span className="text-white font-bold">Rp {totalIDR.toLocaleString('id-ID')}</span></div>
           </div>
-          <button onClick={() => { setSubmitted(false); setAmountIDR(''); setMerchantName('') }}
+          <button onClick={() => { setSubmitted(false); setAmountUSD(''); setMerchantName('') }}
             className="px-8 py-3 bg-white/[0.03] border border-white/10 text-white font-medium rounded-xl hover:bg-white/[0.06] transition-colors text-sm">
             Transaksi Baru
           </button>
@@ -120,8 +120,8 @@ export default function CreditCard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div>
+      <div className="max-w-4xl mx-auto">
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20 flex-shrink-0">
@@ -194,11 +194,11 @@ export default function CreditCard() {
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-2">Tipe Kartu</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {[{ id: 'visa', label: 'Visa', color: 'from-blue-600 to-blue-800' }, { id: 'mastercard', label: 'MC', color: 'from-orange-600 to-red-600' }, { id: 'amex', label: 'Amex', color: 'from-green-600 to-emerald-700' }].map((c) => (
+                  {[{ id: 'visa', label: 'Visa' }, { id: 'mastercard', label: 'Mastercard' }, { id: 'amex', label: 'Amex' }].map((c) => (
                     <button key={c.id} type="button" onClick={() => setCardType(c.id)}
                       className={`p-3 rounded-xl border-2 text-center transition-all ${cardType === c.id ? 'border-orange-500 bg-orange-500/10' : 'border-white/10 hover:border-white/20 bg-white/[0.02]'}`}>
-                      <div className={`w-8 h-5 bg-gradient-to-br ${c.color} rounded-md mx-auto mb-1.5`} />
-                      <p className="text-xs font-medium text-white">{c.label}</p>
+                      <CardBrandIcon brand={c.id} />
+                      <p className="text-xs font-medium text-white mt-1.5">{c.label}</p>
                     </button>
                   ))}
                 </div>

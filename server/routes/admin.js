@@ -2,6 +2,7 @@ const express = require('express')
 const admin = require('firebase-admin')
 const authMiddleware = require('../middleware/auth')
 const { adminOnly } = require('../middleware/auth')
+const { normalizeTx } = require('./transactions')
 
 module.exports = function (db) {
   const router = express.Router()
@@ -46,7 +47,7 @@ module.exports = function (db) {
         totalTransactions: txSnap.size,
         pendingTransactions: pendingSnap.size,
         todayVolume,
-        recentTransactions: recentTxSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        recentTransactions: recentTxSnap.docs.map((d) => normalizeTx(d)),
         recentUsers: recentUsersSnap.docs.map((d) => d.data()),
       })
     } catch (err) {
@@ -61,10 +62,7 @@ module.exports = function (db) {
         .orderBy('createdAt', 'desc')
         .limit(100)
         .get()
-      const transactions = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
+      const transactions = snapshot.docs.map((doc) => normalizeTx(doc))
       res.json(transactions)
     } catch (err) {
       res.status(500).json({ error: err.message })

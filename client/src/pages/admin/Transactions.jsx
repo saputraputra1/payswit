@@ -21,7 +21,9 @@ export default function AdminTransactions() {
       await api.put(`/admin/transactions/${id}`, { status })
       toast.success(`Transaksi ${status === 'completed' ? 'disetujui' : 'ditolak'}`)
       fetchTx()
-    } catch (e) { toast.error('Gagal') }
+    } catch (e) {
+      toast.error('Gagal: ' + (e.response?.data?.error || ''))
+    }
   }
 
   const filtered = filter === 'all' ? transactions : transactions.filter(t => t.status === filter)

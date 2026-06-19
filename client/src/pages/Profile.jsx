@@ -4,7 +4,7 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { db } from '../services/firebase';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { FiUser, FiMail, FiDollarSign, FiClock } from 'react-icons/fi';
+import { FiUser, FiMail, FiDollarSign, FiClock, FiSend, FiPlus, FiArrowRight } from 'react-icons/fi';
 
 export default function Profile() {
   const { profile } = useAuth();
@@ -31,56 +31,117 @@ export default function Profile() {
   const hasPending = txs.some(t => t.status === 'pending' || t.status === 'processing');
 
   const statusBadge = (s) => {
-    const m = { pending: 'bg-yellow-100 text-yellow-700', success: 'bg-green-100 text-green-700', failed: 'bg-red-100 text-red-700' };
-    return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${m[s] || 'bg-gray-100 text-gray-500'}`}>{s}</span>;
+    const m = {
+      pending: ['text-yellow-400 bg-yellow-500/10 border-yellow-500/20', 'Menunggu'],
+      processing: ['text-blue-400 bg-blue-500/10 border-blue-500/20', 'Diproses'],
+      success: ['text-green-400 bg-green-500/10 border-green-500/20', 'Selesai'],
+      completed: ['text-green-400 bg-green-500/10 border-green-500/20', 'Selesai'],
+      failed: ['text-red-400 bg-red-500/10 border-red-500/20', 'Gagal'],
+    };
+    const [c, label] = m[s] || ['text-gray-500 bg-gray-500/10 border-gray-500/20', s];
+    return <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border ${c}`}>{label}</span>;
   };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Profil Saya</h1>
+      {/* Header */}
+      <h1 className="text-2xl font-bold text-white">Profil Saya</h1>
 
-      <div className="card space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center"><FiUser className="w-6 h-6 text-primary-600" /></div>
-          <div>
-            <p className="font-semibold text-lg">{profile?.name || 'User'}</p>
-            <p className="text-sm text-gray-500 flex items-center gap-1"><FiMail className="w-3 h-3" /> {profile?.email}</p>
+      {/* Profile Info Card */}
+      <div className="card space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <FiUser className="w-7 h-7 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-lg text-white truncate">{profile?.name || 'User'}</p>
+            <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
+              <FiMail className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">{profile?.email}</span>
+            </p>
           </div>
         </div>
-        <div className="bg-primary-50 rounded-lg p-4">
-          <p className="text-sm text-primary-600">Saldo IDR</p>
-          <p className="text-2xl font-bold text-primary-700">Rp {(profile?.balance || 0).toLocaleString('id-ID')}</p>
+
+        {/* Balance */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 p-5">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="relative flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <FiDollarSign className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-blue-100">Saldo IDR</p>
+              <p className="text-2xl font-black text-white">Rp {(profile?.balance || 0).toLocaleString('id-ID')}</p>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Queue Warning */}
       {hasPending && queue && queue.total > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 flex items-start gap-3">
-          <FiClock className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-          <div className="text-sm text-amber-800">
-            <p className="font-medium">Antrian: {queue.total} transaksi (estimasi {formatEstimate(queue.estimatedMinutes)})</p>
-            <p className="text-xs text-amber-600 mt-0.5">Rata-rata {queue.avgMinutesPerTx} menit per transaksi</p>
+        <div className="rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+            <FiClock className="w-4 h-4 text-amber-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-amber-300">Antrian: {queue.total} transaksi</p>
+            <p className="text-xs text-amber-400/60">Estimasi {formatEstimate(queue.estimatedMinutes)} • Rata-rata {queue.avgMinutesPerTx} menit/transaksi</p>
           </div>
         </div>
       )}
 
-      <div className="card">
-        <h2 className="font-semibold mb-4 flex items-center gap-2"><FiClock className="w-4 h-4" /> Semua Transaksi</h2>
+      {/* Transaction History */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-white/[0.06]">
+          <FiClock className="w-4 h-4 text-gray-400" />
+          <h2 className="font-bold text-white">Semua Transaksi</h2>
+        </div>
+
         {txs.length === 0 ? (
-          <p className="text-center py-6 text-gray-400">Belum ada transaksi</p>
+          <div className="text-center py-12">
+            <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-3">
+              <FiClock className="w-6 h-6 text-gray-600" />
+            </div>
+            <p className="text-sm text-gray-500">Belum ada transaksi</p>
+          </div>
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y divide-white/[0.04]">
             {txs.map(tx => (
-              <Link key={tx.id} to={`/tracking/${tx.id}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm">{tx.type === 'convert' ? `Convert $${tx.amount} → IDR` : `Top Up $${tx.total?.toFixed(2) || ''}`}</p>
-                  <p className="text-xs text-gray-500">{tx.createdAt ? new Date(tx.createdAt).toLocaleString('id-ID') : '-'}</p>
-                  {(tx.status === 'pending' || tx.status === 'processing') && queue && queue.total > 0 && (
-                    <p className="text-xs text-amber-600 font-medium mt-0.5">Estimasi {formatEstimate(queue.estimatedMinutes)}</p>
-                  )}
+              <Link
+                key={tx.id}
+                to={`/tracking/${tx.id}`}
+                className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    tx.type === 'convert' ? 'bg-blue-500/10' : tx.type === 'topup' ? 'bg-green-500/10' : 'bg-orange-500/10'
+                  }`}>
+                    {tx.type === 'convert'
+                      ? <FiSend className="w-4 h-4 text-blue-400" />
+                      : tx.type === 'topup'
+                        ? <FiPlus className="w-4 h-4 text-green-400" />
+                        : <FiArrowRight className="w-4 h-4 text-orange-400" />
+                    }
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-white truncate">
+                      {tx.type === 'convert' ? `Convert $${tx.amount} → IDR` : tx.type === 'topup' ? `Top Up $${tx.total?.toFixed(2) || ''}` : 'Jasa CC'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                    </p>
+                    {(tx.status === 'pending' || tx.status === 'processing') && queue && queue.total > 0 && (
+                      <p className="text-xs text-amber-400 font-medium mt-0.5">~{formatEstimate(queue.estimatedMinutes)}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right shrink-0 ml-3">
-                  <p className="text-sm font-semibold">{tx.type === 'convert' ? `Rp ${(tx.total || 0).toLocaleString('id-ID')}` : `Rp ${(tx.amount || 0).toLocaleString('id-ID')}`}</p>
-                  {statusBadge(tx.status)}
+                <div className="text-right shrink-0 ml-4">
+                  <p className="font-bold text-white text-sm">
+                    {tx.type === 'convert' ? `Rp ${(tx.total || 0).toLocaleString('id-ID')}` : `Rp ${(tx.amount || 0).toLocaleString('id-ID')}`}
+                  </p>
+                  <div className="mt-1">
+                    {statusBadge(tx.status)}
+                  </div>
                 </div>
               </Link>
             ))}

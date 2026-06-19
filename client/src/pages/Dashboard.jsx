@@ -4,7 +4,7 @@ import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/f
 import { db } from '../services/firebase'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { FiRepeat, FiPlus, FiArrowUp, FiArrowDown, FiClock, FiCheck, FiX, FiDollarSign } from 'react-icons/fi'
+import { FiPlus, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiSend } from 'react-icons/fi'
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -34,83 +34,172 @@ export default function Dashboard() {
 
   const hasPending = txs.some(t => t.status === 'pending' || t.status === 'processing')
 
-  const statCard = (label, value, icon, color) => (
-    <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-5 flex items-center gap-4">
-      <div className={`p-3 rounded-xl ${color}`}>{icon}</div>
-      <div>
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="text-xl font-bold text-white">{value}</p>
-      </div>
-    </div>
-  )
-
   const statusBadge = (s) => {
     const m = {
-      pending: ['text-yellow-400 bg-yellow-500/10 border-yellow-500/20', '🕐'],
-      success: ['text-green-400 bg-green-500/10 border-green-500/20', '✅'],
-      failed: ['text-red-400 bg-red-500/10 border-red-500/20', '❌'],
+      pending: ['text-yellow-400 bg-yellow-500/10 border-yellow-500/20', 'Menunggu'],
+      processing: ['text-blue-400 bg-blue-500/10 border-blue-500/20', 'Diproses'],
+      success: ['text-green-400 bg-green-500/10 border-green-500/20', 'Selesai'],
+      completed: ['text-green-400 bg-green-500/10 border-green-500/20', 'Selesai'],
+      failed: ['text-red-400 bg-red-500/10 border-red-500/20', 'Gagal'],
     }
-    const [c, i] = m[s] || ['text-gray-500 bg-gray-500/10 border-gray-500/20', '❓']
-    return <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${c}`}>{i} {s}</span>
+    const [c, label] = m[s] || ['text-gray-500 bg-gray-500/10 border-gray-500/20', s]
+    return <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border ${c}`}>{label}</span>
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-
-      {profile && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {statCard('Saldo IDR', `Rp ${(profile.balance || 0).toLocaleString('id-ID')}`, <FiDollarSign className="w-6 h-6 text-white" />, 'bg-primary-600')}
-          {statCard('Kurs Beli (USD→IDR)', `Rp ${(rate.buy || 0).toLocaleString('id-ID')}`, <FiArrowDown className="w-6 h-6 text-white" />, 'bg-green-600')}
-          {statCard('Kurs Jual (IDR→USD)', `Rp ${(rate.sell || 0).toLocaleString('id-ID')}`, <FiArrowUp className="w-6 h-6 text-white" />, 'bg-orange-600')}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link to="/convert" className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-5 flex items-center gap-4 hover:bg-white/[0.04] transition border-l-4 border-blue-500">
-          <FiRepeat className="w-8 h-8 text-blue-400" />
-          <div><h3 className="font-semibold text-white">Convert PayPal → IDR</h3><p className="text-sm text-gray-500">Tukar saldo PayPal ke Rupiah</p></div>
-        </Link>
-        <Link to="/topup" className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-5 flex items-center gap-4 hover:bg-white/[0.04] transition border-l-4 border-green-500">
-          <FiPlus className="w-8 h-8 text-green-400" />
-          <div><h3 className="font-semibold text-white">Top Up PayPal</h3><p className="text-sm text-gray-500">Isi saldo PayPal via bank</p></div>
-        </Link>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <p className="text-sm text-gray-500 mt-1">Selamat datang kembali, {profile?.name?.split(' ')[0] || 'User'}</p>
       </div>
 
-      {hasPending && queue && queue.total > 0 && (
-        <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-3 sm:p-4 flex items-start gap-3">
-          <FiClock className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
-          <div className="text-sm text-amber-200">
-            <p className="font-medium">Antrian: {queue.total} transaksi (estimasi {formatEstimate(queue.estimatedMinutes)})</p>
-            <p className="text-xs text-amber-400/70 mt-0.5">Proses berdasarkan urutan masuk, rata-rata {queue.avgMinutesPerTx} menit per transaksi</p>
+      {/* Stats Cards */}
+      {profile && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Balance Card - Featured */}
+          <div className="sm:col-span-1 relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-5 text-white">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <FiDollarSign className="w-4 h-4" />
+                </div>
+                <p className="text-xs font-medium text-blue-100">Saldo IDR</p>
+              </div>
+              <p className="text-2xl font-black">Rp {(profile.balance || 0).toLocaleString('id-ID')}</p>
+            </div>
+          </div>
+
+          {/* Buy Rate */}
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <FiArrowDown className="w-4 h-4 text-green-400" />
+              </div>
+              <p className="text-xs font-medium text-gray-500">Kurs Beli</p>
+            </div>
+            <p className="text-xl font-black text-white">Rp {(rate.buy || 0).toLocaleString('id-ID')}</p>
+            <p className="text-[10px] text-gray-500 mt-1">USD → IDR</p>
+          </div>
+
+          {/* Sell Rate */}
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <FiArrowUp className="w-4 h-4 text-orange-400" />
+              </div>
+              <p className="text-xs font-medium text-gray-500">Kurs Jual</p>
+            </div>
+            <p className="text-xl font-black text-white">Rp {(rate.sell || 0).toLocaleString('id-ID')}</p>
+            <p className="text-[10px] text-gray-500 mt-1">IDR → USD</p>
           </div>
         </div>
       )}
 
-      <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-white">Riwayat Transaksi</h2>
-          {txs.length > 0 && <Link to="/profile" className="text-sm text-blue-400 hover:underline">Lihat semua</Link>}
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Aksi Cepat</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Link
+            to="/convert"
+            className="group relative overflow-hidden rounded-2xl bg-white/[0.03] border border-white/[0.08] p-5 hover:bg-white/[0.06] hover:border-blue-500/30 transition-all"
+          >
+            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/10 transition-colors" />
+            <div className="relative flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <FiSend className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-white">Convert PayPal</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Tukar saldo PayPal ke Rupiah</p>
+              </div>
+              <FiArrowDown className="w-5 h-5 text-gray-600 -rotate-90 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          <Link
+            to="/topup"
+            className="group relative overflow-hidden rounded-2xl bg-white/[0.03] border border-white/[0.08] p-5 hover:bg-white/[0.06] hover:border-green-500/30 transition-all"
+          >
+            <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-green-500/10 transition-colors" />
+            <div className="relative flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/20">
+                <FiPlus className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-white">Top Up PayPal</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Isi saldo PayPal via bank</p>
+              </div>
+              <FiArrowDown className="w-5 h-5 text-gray-600 -rotate-90 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
         </div>
+      </div>
+
+      {/* Queue Warning */}
+      {hasPending && queue && queue.total > 0 && (
+        <div className="rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+            <FiClock className="w-4 h-4 text-amber-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-amber-300">Antrian: {queue.total} transaksi</p>
+            <p className="text-xs text-amber-400/60">Estimasi {formatEstimate(queue.estimatedMinutes)} • Rata-rata {queue.avgMinutesPerTx} menit/transaksi</p>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction History */}
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <h2 className="font-bold text-white">Riwayat Transaksi</h2>
+          {txs.length > 0 && <Link to="/profile" className="text-xs text-blue-400 hover:text-blue-300 font-medium">Lihat semua →</Link>}
+        </div>
+
         {txs.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <FiClock className="w-10 h-10 mx-auto mb-2" />
-            <p>Belum ada transaksi</p>
+          <div className="text-center py-12">
+            <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-3">
+              <FiClock className="w-6 h-6 text-gray-600" />
+            </div>
+            <p className="text-sm text-gray-500">Belum ada transaksi</p>
+            <p className="text-xs text-gray-600 mt-1">Mulai convert atau top up untuk melihat riwayat</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y divide-white/[0.04]">
             {txs.map(tx => (
-              <Link key={tx.id} to={`/tracking/${tx.id}`} className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg hover:bg-white/[0.04] transition-colors border border-white/[0.04]">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm text-white">{tx.type === 'convert' ? 'Convert PayPal → IDR' : 'Top Up PayPal'}</p>
-                  <p className="text-xs text-gray-500">{new Date(tx.createdAt).toLocaleDateString('id-ID')}</p>
-                  {(tx.status === 'pending' || tx.status === 'processing') && queue && queue.total > 0 && (
-                    <p className="text-xs text-amber-400 font-medium mt-0.5">Estimasi {formatEstimate(queue.estimatedMinutes)}</p>
-                  )}
+              <Link
+                key={tx.id}
+                to={`/tracking/${tx.id}`}
+                className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    tx.type === 'convert' ? 'bg-blue-500/10' : 'bg-green-500/10'
+                  }`}>
+                    {tx.type === 'convert'
+                      ? <FiSend className="w-4 h-4 text-blue-400" />
+                      : <FiPlus className="w-4 h-4 text-green-400" />
+                    }
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-white truncate">
+                      {tx.type === 'convert' ? 'Convert PayPal → IDR' : 'Top Up PayPal'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">{new Date(tx.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    {(tx.status === 'pending' || tx.status === 'processing') && queue && queue.total > 0 && (
+                      <p className="text-xs text-amber-400 font-medium mt-0.5">~{formatEstimate(queue.estimatedMinutes)}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right shrink-0 ml-3">
-                  <p className="font-semibold text-white">{tx.type === 'convert' ? `$${tx.amount}` : `Rp ${(tx.amount || 0).toLocaleString('id-ID')}`}</p>
-                  {statusBadge(tx.status)}
+                <div className="text-right shrink-0 ml-4">
+                  <p className="font-bold text-white">
+                    {tx.type === 'convert' ? `$${tx.amount}` : `Rp ${(tx.amount || 0).toLocaleString('id-ID')}`}
+                  </p>
+                  <div className="mt-1">
+                    {statusBadge(tx.status)}
+                  </div>
                 </div>
               </Link>
             ))}

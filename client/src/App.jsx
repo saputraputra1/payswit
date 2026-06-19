@@ -39,7 +39,8 @@ function AppRoutes() {
   return (
     <Router>
       {user && <Navbar />}
-      <div className={user ? 'pt-16' : ''}>
+      <div className={user ? 'pt-16 sm:pt-[72px]' : ''}>
+        <div className={user ? 'max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8' : ''}>
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to={isAdmin ? '/admin' : '/'} />} />
           <Route path="/register" element={!user ? <Register /> : <Navigate to={isAdmin ? '/admin' : '/'} />} />
@@ -63,6 +64,7 @@ function AppRoutes() {
 
           <Route path="*" element={<Navigate to={isAdmin ? '/admin' : '/'} />} />
         </Routes>
+        </div>
       </div>
     </Router>
   )
