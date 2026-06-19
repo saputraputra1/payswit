@@ -411,11 +411,12 @@ export default function Landing() {
             desc="Tanpa biaya tersembunyi. Semua tertera jelas."
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-16">
             {[
-              { label: 'USD → IDR', value: `Rp ${rates?.usdToIdr?.toLocaleString('id-ID') || '16.000'}`, sub: 'per 1 Dollar AS', gradient: 'from-blue-500 to-cyan-500' },
-              { label: 'Biaya Admin Top Up', value: `${rates?.fee ? (rates.fee * 100) : '2'}%`, sub: 'per transaksi', gradient: 'from-purple-500 to-pink-500' },
-              { label: 'Biaya Jasa CC', value: '3-5%', sub: 'tergantung nominal', gradient: 'from-orange-500 to-red-500' },
+              { label: 'USD → IDR', value: `Rp ${rates?.usdToIdr?.toLocaleString('id-ID') || '16.000'}`, sub: 'kurs normal', gradient: 'from-blue-500 to-cyan-500' },
+              { label: 'Standard', value: 'Rp 15.000', sub: 'biaya admin • kurs normal', gradient: 'from-blue-500 to-cyan-500' },
+              { label: 'Premium', value: 'Rp 20.000', sub: 'biaya admin • kurs +Rp 1.000/USD', gradient: 'from-yellow-500 to-orange-500' },
+              { label: 'Biaya CC', value: '4%', sub: 'per transaksi', gradient: 'from-purple-500 to-pink-500' },
             ].map((item, i) => {
               const [ref, isVisible] = useInView()
               return (
