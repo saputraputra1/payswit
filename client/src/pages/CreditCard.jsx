@@ -163,10 +163,10 @@ export default function CreditCard() {
                   placeholder="Amazon, Netflix" required />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">URL (opsional)</label>
-                <input type="url" value={merchantUrl} onChange={(e) => setMerchantUrl(e.target.value)}
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">URL Merchant <span className="text-gray-600">(opsional)</span></label>
+                <input type="text" value={merchantUrl} onChange={(e) => setMerchantUrl(e.target.value)}
                   className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-sm"
-                  placeholder="https://merchant.com" />
+                  placeholder="https://merchant.com (tidak wajib)" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Jumlah (USD)</label>

@@ -27,18 +27,22 @@ module.exports = function (db) {
 
   router.post('/', auth, async (req, res) => {
     try {
-      const { type, amountUSD, amountIDR, paypalEmail, bankName, bankAccount, bankHolder, paymentMethod } = req.body
+      const { type, amountUSD, amountIDR, paypalEmail, bankName, bankAccount, bankHolder, paymentMethod, merchantName, merchantUrl, description, cardType, plan, adminFee, ccFee, totalUSD } = req.body
 
-      if (!type || !paypalEmail) {
-        return res.status(400).json({ error: 'Data tidak lengkap' })
+      if (!type) {
+        return res.status(400).json({ error: 'Tipe transaksi wajib diisi' })
       }
 
-      if (type === 'convert' && (!amountUSD || !bankName || !bankAccount || !bankHolder)) {
+      if (type === 'convert' && (!amountUSD || !paypalEmail || !bankName || !bankAccount || !bankHolder)) {
         return res.status(400).json({ error: 'Data convert tidak lengkap' })
       }
 
-      if (type === 'topup' && (!amountIDR || !paymentMethod)) {
+      if (type === 'topup' && (!amountIDR || !paypalEmail || !paymentMethod)) {
         return res.status(400).json({ error: 'Data top up tidak lengkap' })
+      }
+
+      if (type === 'credit_card' && (!amountUSD || !merchantName)) {
+        return res.status(400).json({ error: 'Data CC tidak lengkap' })
       }
 
       const transaction = {
@@ -48,11 +52,19 @@ module.exports = function (db) {
         type,
         amountUSD: amountUSD || 0,
         amountIDR: amountIDR || 0,
-        paypalEmail,
+        paypalEmail: paypalEmail || null,
         bankName: bankName || null,
         bankAccount: bankAccount || null,
         bankHolder: bankHolder || null,
         paymentMethod: paymentMethod || null,
+        merchantName: merchantName || null,
+        merchantUrl: merchantUrl || null,
+        description: description || null,
+        cardType: cardType || null,
+        plan: plan || null,
+        adminFee: adminFee || 0,
+        ccFee: ccFee || 0,
+        totalUSD: totalUSD || 0,
         status: 'pending',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
