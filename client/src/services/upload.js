@@ -1,28 +1,20 @@
+import api from './api'
+
 export async function uploadImage(file) {
   return new Promise((resolve, reject) => {
-    const formData = new FormData()
-    formData.append('image', file)
-    formData.append('key', '15a5589618c85266bea80ce880176878')
+    const reader = new FileReader()
 
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', 'https://api.imgbb.com/1/upload')
-
-    xhr.onload = () => {
+    reader.onload = async () => {
       try {
-        const res = JSON.parse(xhr.responseText)
-        if (res.success) {
-          resolve(res.data.url)
-        } else {
-          reject(new Error('Gagal upload'))
-        }
-      } catch (e) {
+        const base64 = reader.result.split(',')[1]
+        const res = await api.post('/upload', { image: base64 })
+        resolve(res.data.url)
+      } catch (err) {
         reject(new Error('Gagal upload'))
       }
     }
 
-    xhr.onerror = () => reject(new Error('Gagal upload'))
-    xhr.ontimeout = () => reject(new Error('Timeout'))
-
-    xhr.send(formData)
+    reader.onerror = () => reject(new Error('Gagal baca file'))
+    reader.readAsDataURL(file)
   })
 }
