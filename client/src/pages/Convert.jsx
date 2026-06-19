@@ -8,8 +8,9 @@ import toast from 'react-hot-toast'
 import {
   FiRepeat, FiSend, FiDollarSign, FiCheck, FiCopy, FiArrowRight,
   FiInfo, FiClock, FiShield, FiLock, FiGlobe, FiRefreshCw, FiCreditCard,
-  FiZap, FiStar,
+  FiZap, FiStar, FiChevronDown,
 } from 'react-icons/fi'
+import { BankIcon } from '../components/Icons'
 
 // Plan Standard & Priority — selaras dengan CreditCard
 const PLANS = {
@@ -49,14 +50,18 @@ export default function Convert() {
   const [baseRate, setBaseRate] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [paypalEmail, setPaypalEmail] = useState('')
-  const [bankName, setBankName] = useState('')
-  const [bankAccount, setBankAccount] = useState('')
-  const [bankHolder, setBankHolder] = useState('')
   const [plan, setPlan] = useState('standard')
   const [loading, setLoading] = useState(false)
   const [lastTx, setLastTx] = useState(null)
   const [queue, setQueue] = useState(null)
   const [copied, setCopied] = useState('')
+  const [adminAccounts, setAdminAccounts] = useState([])
+  const [selectedAccountId, setSelectedAccountId] = useState('')
+
+  // Fetch rekening admin
+  useEffect(() => {
+    api.get('/bank-accounts').then(({ data }) => setAdminAccounts(data)).catch(() => {})
+  }, [])
 
   // Kurs realtime
   useEffect(() => {
@@ -80,7 +85,9 @@ export default function Convert() {
     e?.preventDefault?.()
     if (!usdNum || usdNum < 1) return toast.error('Minimal $1')
     if (!paypalEmail && !profile?.paypal_email) return toast.error('Masukkan email PayPal kamu')
-    if (!bankName || !bankAccount || !bankHolder) return toast.error('Lengkapi data rekening bank penerima')
+    if (!selectedAccountId) return toast.error('Pilih rekening bank penerima')
+    const selectedAccount = adminAccounts.find(a => a.id === selectedAccountId)
+    if (!selectedAccount) return toast.error('Rekening tidak ditemukan')
     setLoading(true)
     try {
       const { data } = await api.post('/transactions', {
@@ -89,14 +96,16 @@ export default function Convert() {
         amountIDR: idrRaw,
         rate: effectiveRate,
         paypalEmail: paypalEmail || profile?.paypal_email,
-        bankName, bankAccount, bankHolder,
+        bankName: selectedAccount.bankName,
+        bankAccount: selectedAccount.accountNumber,
+        bankHolder: selectedAccount.accountHolder,
         plan, serviceFee: selectedPlan.serviceFee, adminFee: selectedPlan.adminFee, totalFee: selectedPlan.totalFee,
       })
       setLastTx({ id: data?.id, usd: usdNum, idr: idrAfterFee, adminPaypal: 'admin@payswit.com', plan })
       api.get('/transactions/queue').then(({ data }) => setQueue(data)).catch(() => {})
       toast.success('Permintaan convert terkirim!')
       setUsd('')
-      setBankName(''); setBankAccount(''); setBankHolder('')
+      setSelectedAccountId('')
     } catch (e) {
       toast.error('Gagal kirim permintaan: ' + (e.response?.data?.error || ''))
     } finally { setLoading(false) }
@@ -302,28 +311,44 @@ export default function Convert() {
               </div>
             </div>
 
-            {/* Bank account */}
+            {/* Bank account - selector dari list rekening admin */}
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6 space-y-4">
               <h3 className="font-bold text-white text-sm">Rekening bank penerima (IDR)</h3>
-              <p className="text-xs text-gray-500 -mt-2">Pembayaran Rupiah akan dikirim ke rekening ini</p>
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Nama Bank</label>
-                <input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                  placeholder="BCA / Mandiri / BNI / BRI ..." required />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Nomor Rekening</label>
-                <input type="text" inputMode="numeric" value={bankAccount} onChange={(e) => setBankAccount(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                  placeholder="1234567890" required />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Atas Nama</label>
-                <input type="text" value={bankHolder} onChange={(e) => setBankHolder(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                  placeholder="Nama sesuai buku tabungan" required />
-              </div>
+              <p className="text-xs text-gray-500 -mt-2">Pilih rekening admin untuk menerima pembayaran Rupiah</p>
+
+              {adminAccounts.length === 0 ? (
+                <div className="bg-white/[0.02] border border-white/10 rounded-xl px-4 py-8 text-center">
+                  <FiCreditCard size={28} className="mx-auto text-gray-600 mb-2" />
+                  <p className="text-gray-500 text-sm">Belum ada rekening tersedia</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {adminAccounts.map((acc) => {
+                    const isSelected = selectedAccountId === acc.id
+                    return (
+                      <button key={acc.id} type="button"
+                        onClick={() => setSelectedAccountId(acc.id)}
+                        className={`w-full flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-500/10'
+                            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+                        }`}>
+                        <BankIcon bankName={acc.bankName} size="md" />
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-bold text-sm ${isSelected ? 'text-blue-400' : 'text-white'}`}>{acc.bankName}</p>
+                          <p className="font-mono text-gray-400 text-xs sm:text-sm">{acc.accountNumber}</p>
+                          <p className="text-[10px] sm:text-xs text-gray-500">a.n {acc.accountHolder}</p>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                          isSelected ? 'border-blue-500 bg-blue-500' : 'border-white/20'
+                        }`}>
+                          {isSelected && <FiCheck size={12} className="text-white" />}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             <button type="submit" disabled={loading}
