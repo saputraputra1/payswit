@@ -8,7 +8,9 @@ import { BankIcon } from '../components/Icons'
 const PLANS = {
   standard: {
     name: 'Standard',
-    fee: 20000,
+    serviceFee: 15000,
+    adminFee: 15000,
+    totalFee: 30000,
     kursBonus: 0,
     icon: FiZap,
     color: 'from-blue-500 to-cyan-500',
@@ -16,11 +18,13 @@ const PLANS = {
     bgColor: 'bg-blue-500/10',
     textColor: 'text-blue-400',
     desc: 'Proses 1-24 jam',
-    features: ['Verifikasi manual', 'Proses 1-24 jam', 'Biaya Rp 20.000'],
+    features: ['Verifikasi manual', 'Proses 1-24 jam'],
   },
   premium: {
     name: 'Priority',
-    fee: 15000,
+    serviceFee: 15000,
+    adminFee: 20000,
+    totalFee: 35000,
     kursBonus: 1000,
     icon: FiStar,
     color: 'from-yellow-500 to-orange-500',
@@ -28,7 +32,7 @@ const PLANS = {
     bgColor: 'bg-yellow-500/10',
     textColor: 'text-yellow-400',
     desc: 'Proses 15-30 menit',
-    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Biaya Rp 15.000', 'Kurs +Rp 1.000/USD'],
+    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Kurs +Rp 1.000/USD'],
   },
 }
 
@@ -54,7 +58,7 @@ export default function Convert() {
   const selectedPlan = PLANS[plan]
   const effectiveKurs = rates ? rates.usdToIdr + selectedPlan.kursBonus : 0
   const estimatedIDR = amountUSD && rates ? (parseFloat(amountUSD) * effectiveKurs) : 0
-  const totalReceive = estimatedIDR - selectedPlan.fee
+  const totalReceive = estimatedIDR - selectedPlan.totalFee
 
   function copyText(text, field) {
     navigator.clipboard.writeText(text)
@@ -72,7 +76,7 @@ export default function Convert() {
         type: 'convert', amountUSD: parseFloat(amountUSD),
         amountIDR: estimatedIDR,
         paypalEmail, bankName: selectedBank?.bankName, bankAccount: selectedBank?.accountNumber, bankHolder: selectedBank?.accountHolder,
-        plan, adminFee: selectedPlan.fee, totalReceive,
+        plan, serviceFee: selectedPlan.serviceFee, adminFee: selectedPlan.adminFee, totalFee: selectedPlan.totalFee, totalReceive,
       })
       toast.success('Permintaan convert berhasil!')
       setAmountUSD(''); setPaypalEmail('')
@@ -113,8 +117,8 @@ export default function Convert() {
                       <Icon size={20} className={isSelected ? p.textColor : 'text-gray-500'} />
                       <span className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-gray-400'}`}>{p.name}</span>
                     </div>
-                    <p className={`text-2xl sm:text-3xl font-black mb-1 ${isSelected ? 'text-white' : 'text-gray-400'}`}>Rp {p.fee.toLocaleString('id-ID')}</p>
-                    <p className={`text-xs ${isSelected ? p.textColor : 'text-gray-500'}`}>{p.desc}</p>
+                    <p className={`text-2xl sm:text-3xl font-black mb-1 ${isSelected ? 'text-white' : 'text-gray-400'}`}>Rp {p.totalFee.toLocaleString('id-ID')}</p>
+                    <p className={`text-xs ${isSelected ? p.textColor : 'text-gray-500'}`}>Biaya layanan + admin</p>
                     <ul className="mt-3 space-y-1.5">
                       {p.features.map((f, i) => (
                         <li key={i} className={`flex items-center gap-2 text-xs ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
@@ -148,18 +152,22 @@ export default function Convert() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
-                    <p className="text-xs text-gray-500 mb-1">Estimasi</p>
-                    <p className="font-bold text-white text-sm">Rp {estimatedIDR.toLocaleString('id-ID')}</p>
+                <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 sm:p-3">
+                    <p className="text-[10px] text-gray-500 mb-0.5">Estimasi</p>
+                    <p className="font-bold text-white text-xs sm:text-sm">Rp {estimatedIDR.toLocaleString('id-ID')}</p>
                   </div>
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
-                    <p className="text-xs text-gray-500 mb-1">Biaya</p>
-                    <p className={`font-bold text-sm ${selectedPlan.textColor}`}>-Rp {selectedPlan.fee.toLocaleString('id-ID')}</p>
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 sm:p-3">
+                    <p className="text-[10px] text-gray-500 mb-0.5">Biaya Layanan</p>
+                    <p className={`font-bold text-xs sm:text-sm ${selectedPlan.textColor}`}>-Rp {selectedPlan.serviceFee.toLocaleString('id-ID')}</p>
                   </div>
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
-                    <p className="text-xs text-gray-500 mb-1">Terima</p>
-                    <p className="font-black text-green-400 text-sm">Rp {totalReceive.toLocaleString('id-ID')}</p>
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 sm:p-3">
+                    <p className="text-[10px] text-gray-500 mb-0.5">Biaya Admin</p>
+                    <p className={`font-bold text-xs sm:text-sm ${selectedPlan.textColor}`}>-Rp {selectedPlan.adminFee.toLocaleString('id-ID')}</p>
+                  </div>
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 sm:p-3">
+                    <p className="text-[10px] text-gray-500 mb-0.5">Terima</p>
+                    <p className="font-black text-green-400 text-xs sm:text-sm">Rp {totalReceive.toLocaleString('id-ID')}</p>
                   </div>
                 </div>
 

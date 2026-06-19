@@ -8,7 +8,9 @@ import { BankIcon, PaymentMethodIcon } from '../components/Icons'
 const PLANS = {
   standard: {
     name: 'Standard',
-    fee: 20000,
+    serviceFee: 15000,
+    adminFee: 15000,
+    totalFee: 30000,
     kursBonus: 0,
     icon: FiZap,
     color: 'from-blue-500 to-cyan-500',
@@ -16,11 +18,13 @@ const PLANS = {
     bgColor: 'bg-blue-500/10',
     textColor: 'text-blue-400',
     desc: 'Proses 1-24 jam',
-    features: ['Verifikasi manual', 'Proses 1-24 jam', 'Biaya Rp 20.000'],
+    features: ['Verifikasi manual', 'Proses 1-24 jam'],
   },
   premium: {
     name: 'Priority',
-    fee: 15000,
+    serviceFee: 15000,
+    adminFee: 20000,
+    totalFee: 35000,
     kursBonus: 1000,
     icon: FiStar,
     color: 'from-yellow-500 to-orange-500',
@@ -28,7 +32,7 @@ const PLANS = {
     bgColor: 'bg-yellow-500/10',
     textColor: 'text-yellow-400',
     desc: 'Proses 15-30 menit',
-    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Biaya Rp 15.000', 'Kurs +Rp 1.000/USD'],
+    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Kurs +Rp 1.000/USD'],
   },
 }
 
@@ -57,7 +61,7 @@ export default function Topup() {
   const selectedPlan = PLANS[plan]
   const effectiveKurs = rates ? rates.usdToIdr + selectedPlan.kursBonus : 0
   const estimatedUSD = amountIDR && rates ? (parseFloat(amountIDR) / effectiveKurs).toFixed(2) : '0'
-  const totalPay = amountIDR ? (parseFloat(amountIDR) + selectedPlan.fee).toLocaleString('id-ID') : '0'
+  const totalPay = amountIDR ? (parseFloat(amountIDR) + selectedPlan.totalFee).toLocaleString('id-ID') : '0'
 
   function copyText(text, field) {
     navigator.clipboard.writeText(text)
@@ -76,8 +80,8 @@ export default function Topup() {
         type: 'topup', amountIDR: parseFloat(amountIDR),
         amountUSD: parseFloat(amountIDR) / effectiveKurs,
         paypalEmail, paymentMethod, plan,
-        adminFee: selectedPlan.fee,
-        totalPay: parseFloat(amountIDR) + selectedPlan.fee,
+        adminFee: selectedPlan.totalFee,
+        totalPay: parseFloat(amountIDR) + selectedPlan.totalFee,
         bankName: selectedBank.bankName,
         bankAccount: selectedBank.accountNumber,
         bankHolder: selectedBank.accountHolder,
@@ -88,8 +92,8 @@ export default function Topup() {
         bankAccount: selectedBank.accountNumber,
         bankHolder: selectedBank.accountHolder,
         amountIDR: parseFloat(amountIDR),
-        plan, adminFee: selectedPlan.fee,
-        totalPay: parseFloat(amountIDR) + selectedPlan.fee,
+        plan, adminFee: selectedPlan.totalFee,
+        totalPay: parseFloat(amountIDR) + selectedPlan.totalFee,
       })
       setSubmitted(true)
       toast.success('Pesanan dibuat!')
@@ -193,7 +197,7 @@ export default function Topup() {
                   <span className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-gray-400'}`}>{p.name}</span>
                 </div>
                 <p className={`text-2xl sm:text-3xl font-black mb-1 ${isSelected ? 'text-white' : 'text-gray-400'}`}>
-                  Rp {p.fee.toLocaleString('id-ID')}
+                  Rp {p.totalFee.toLocaleString('id-ID')}
                 </p>
                 <p className={`text-xs ${isSelected ? p.textColor : 'text-gray-500'}`}>{p.desc}</p>
                 <ul className="mt-3 space-y-1.5">
@@ -235,7 +239,7 @@ export default function Topup() {
               </div>
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
                 <p className="text-xs text-gray-500 mb-1">Biaya {selectedPlan.name}</p>
-                <p className={`font-bold text-sm ${selectedPlan.textColor}`}>Rp {selectedPlan.fee.toLocaleString('id-ID')}</p>
+                <p className={`font-bold text-sm ${selectedPlan.textColor}`}>Rp {selectedPlan.totalFee.toLocaleString('id-ID')}</p>
               </div>
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
                 <p className="text-xs text-gray-500 mb-1">Total Bayar</p>

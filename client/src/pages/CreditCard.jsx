@@ -65,7 +65,7 @@ export default function CreditCard() {
   const effectiveKurs = rates ? rates.usdToIdr + selectedPlan.kursBonus : 0
   const ccFee = amountUSD ? (parseFloat(amountUSD) * 0.04) : 0
   const totalUSD = amountUSD ? (parseFloat(amountUSD) + ccFee) : 0
-  const totalIDR = rates ? (totalUSD * effectiveKurs) + selectedPlan.fee : selectedPlan.fee
+  const totalIDR = rates ? (totalUSD * effectiveKurs) + selectedPlan.totalFee : selectedPlan.totalFee
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -76,7 +76,7 @@ export default function CreditCard() {
         type: 'credit_card', amountUSD: parseFloat(amountUSD),
         amountIDR: totalIDR,
         merchantName, merchantUrl, description, cardType, paymentMethod,
-        plan, adminFee: selectedPlan.fee,
+        plan, adminFee: selectedPlan.totalFee,
         ccFee, totalUSD,
       })
       toast.success('Permintaan berhasil!')
@@ -102,7 +102,8 @@ export default function CreditCard() {
             <div className="flex justify-between"><span className="text-gray-500">Merchant</span><span className="text-white">{merchantName}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Jumlah</span><span className="text-white">${amountUSD}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Biaya CC (4%)</span><span className="text-white">${ccFee.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Biaya Admin</span><span className={`font-medium ${selectedPlan.textColor}`}>Rp {selectedPlan.fee.toLocaleString('id-ID')}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Biaya Layanan</span><span className={`font-medium ${selectedPlan.textColor}`}>Rp {selectedPlan.serviceFee.toLocaleString('id-ID')}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Biaya Admin</span><span className={`font-medium ${selectedPlan.textColor}`}>Rp {selectedPlan.adminFee.toLocaleString('id-ID')}</span></div>
             <div className="flex justify-between pt-2 border-t border-white/[0.06]"><span className="text-gray-400 font-medium">Total</span><span className="text-white font-bold">Rp {totalIDR.toLocaleString('id-ID')}</span></div>
           </div>
           <button onClick={() => { setSubmitted(false); setAmountIDR(''); setMerchantName('') }}
@@ -148,7 +149,7 @@ export default function CreditCard() {
                   <span className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-gray-400'}`}>{p.name}</span>
                 </div>
                 <p className={`text-2xl sm:text-3xl font-black mb-1 ${isSelected ? 'text-white' : 'text-gray-400'}`}>
-                  Rp {p.fee.toLocaleString('id-ID')}
+                  Rp {p.totalFee.toLocaleString('id-ID')}
                 </p>
                 <p className={`text-xs ${isSelected ? p.textColor : 'text-gray-500'}`}>{p.desc}</p>
               </button>
@@ -254,7 +255,8 @@ export default function CreditCard() {
                 <div className="flex justify-between"><span className="text-gray-500">Biaya CC (4%)</span><span className="text-white">${ccFee.toFixed(2)}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Total USD</span><span className="text-white">${totalUSD.toFixed(2)}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Kurs</span><span className="text-white">Rp {rates?.usdToIdr?.toLocaleString('id-ID') || '...'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Biaya {selectedPlan.name}</span><span className={`font-medium ${selectedPlan.textColor}`}>Rp {selectedPlan.fee.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Biaya Layanan</span><span className={`font-medium ${selectedPlan.textColor}`}>Rp {selectedPlan.serviceFee.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Biaya Admin</span><span className={`font-medium ${selectedPlan.textColor}`}>Rp {selectedPlan.adminFee.toLocaleString('id-ID')}</span></div>
                 <div className="flex justify-between pt-3 border-t border-white/[0.06]"><span className="text-gray-400 font-medium">Total</span><span className="text-white font-bold">Rp {totalIDR.toLocaleString('id-ID')}</span></div>
               </div>
             </div>
