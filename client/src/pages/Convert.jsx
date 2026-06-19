@@ -8,79 +8,98 @@ import toast from 'react-hot-toast'
 import {
   FiRepeat, FiSend, FiDollarSign, FiCheck, FiCopy, FiArrowRight,
   FiInfo, FiClock, FiShield, FiLock, FiGlobe, FiRefreshCw, FiCreditCard,
+  FiZap, FiStar,
 } from 'react-icons/fi'
 
-// Spread kecil untuk membedakan kurs beli (user jual USD) vs kurs mid.
+// Plan Standard & Priority — selaras dengan CreditCard
+const PLANS = {
+  standard: {
+    name: 'Standard',
+    serviceFee: 10000,
+    adminFee: 10000,
+    totalFee: 20000,
+    kursBonus: 0,
+    icon: FiZap,
+    color: 'from-blue-500 to-blue-600',
+    borderColor: 'border-blue-500',
+    bgColor: 'bg-blue-500/10',
+    textColor: 'text-blue-400',
+    desc: 'Proses 1-24 jam',
+  },
+  premium: {
+    name: 'Priority',
+    serviceFee: 15000,
+    adminFee: 15000,
+    totalFee: 30000,
+    kursBonus: 500,
+    icon: FiStar,
+    color: 'from-yellow-500 to-orange-500',
+    borderColor: 'border-yellow-500',
+    bgColor: 'bg-yellow-500/10',
+    textColor: 'text-yellow-400',
+    desc: 'Proses 15-30 menit',
+  },
+}
+
 const BUY_SPREAD = 100
 
 export default function Convert() {
   const { profile } = useAuth()
   const [usd, setUsd] = useState('')
-  const [baseRate, setBaseRate] = useState(null) // usdToIdr realtime dari settings/rates
+  const [baseRate, setBaseRate] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [paypalEmail, setPaypalEmail] = useState('')
   const [bankName, setBankName] = useState('')
   const [bankAccount, setBankAccount] = useState('')
   const [bankHolder, setBankHolder] = useState('')
+  const [plan, setPlan] = useState('standard')
   const [loading, setLoading] = useState(false)
   const [lastTx, setLastTx] = useState(null)
   const [queue, setQueue] = useState(null)
   const [copied, setCopied] = useState('')
 
-  // Kurs realtime via onSnapshot (auto-update tiap jam oleh kurs service)
+  // Kurs realtime
   useEffect(() => {
-    const unsub = onSnapshot(
-      doc(db, 'settings', 'rates'),
-      (snap) => {
-        if (snap.exists()) {
-          const d = snap.data()
-          setBaseRate(Number(d.usdToIdr) || null)
-          setLastUpdated(d.lastUpdated?.toDate?.() || new Date())
-        }
-      },
-      () => {}
-    )
+    const unsub = onSnapshot(doc(db, 'settings', 'rates'), (snap) => {
+      if (snap.exists()) {
+        const d = snap.data()
+        setBaseRate(Number(d.usdToIdr) || null)
+        setLastUpdated(d.lastUpdated?.toDate?.() || new Date())
+      }
+    }, () => {})
     return unsub
   }, [])
 
-  const buyRate = baseRate ? Math.max(baseRate - BUY_SPREAD, 1) : 15500
+  const selectedPlan = PLANS[plan]
+  const effectiveRate = baseRate ? (baseRate - BUY_SPREAD + selectedPlan.kursBonus) : 15500
   const usdNum = usd ? parseFloat(usd) : 0
-  const idr = usdNum ? usdNum * buyRate : 0
+  const idrRaw = usdNum * effectiveRate
+  const idrAfterFee = Math.max(idrRaw - selectedPlan.totalFee, 0)
 
   const handleConvert = async (e) => {
     e?.preventDefault?.()
     if (!usdNum || usdNum < 1) return toast.error('Minimal $1')
     if (!paypalEmail && !profile?.paypal_email) return toast.error('Masukkan email PayPal kamu')
-    if (!bankName || !bankAccount || !bankHolder)
-      return toast.error('Lengkapi data rekening bank penerima')
+    if (!bankName || !bankAccount || !bankHolder) return toast.error('Lengkapi data rekening bank penerima')
     setLoading(true)
     try {
-      const idrNum = usdNum * buyRate
       const { data } = await api.post('/transactions', {
         type: 'convert',
         amountUSD: usdNum,
-        amountIDR: idrNum,
-        rate: buyRate,
+        amountIDR: idrRaw,
+        rate: effectiveRate,
         paypalEmail: paypalEmail || profile?.paypal_email,
-        bankName,
-        bankAccount,
-        bankHolder,
+        bankName, bankAccount, bankHolder,
+        plan, serviceFee: selectedPlan.serviceFee, adminFee: selectedPlan.adminFee, totalFee: selectedPlan.totalFee,
       })
-      setLastTx({
-        id: data?.id,
-        usd: usdNum,
-        idr: idrNum,
-        adminPaypal: 'admin@payswit.com',
-      })
+      setLastTx({ id: data?.id, usd: usdNum, idr: idrAfterFee, adminPaypal: 'admin@payswit.com', plan })
       api.get('/transactions/queue').then(({ data }) => setQueue(data)).catch(() => {})
       toast.success('Permintaan convert terkirim!')
       setUsd('')
       setBankName(''); setBankAccount(''); setBankHolder('')
     } catch (e) {
       toast.error('Gagal kirim permintaan: ' + (e.response?.data?.error || ''))
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   const copyText = (text, label) => {
@@ -89,7 +108,7 @@ export default function Convert() {
     setTimeout(() => setCopied(''), 2000)
   }
 
-  // ----- SUCCESS STATE -----
+  // ==================== SUCCESS STATE ====================
   if (lastTx) {
     return (
       <div className="max-w-4xl mx-auto">
@@ -107,16 +126,18 @@ export default function Convert() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Success header */}
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6 text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/20">
                 <FiCheck className="w-8 h-8 text-white" />
               </div>
               <h2 className="text-xl font-bold text-white">Permintaan Dibuat!</h2>
-              <p className="text-sm text-gray-500 mt-1">Kirim PayPal ke akun admin berikut</p>
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mt-2 ${PLANS[lastTx.plan]?.bgColor} ${PLANS[lastTx.plan]?.textColor}`}>
+                {lastTx.plan === 'premium' ? <FiStar size={14} /> : <FiZap size={14} />}
+                Paket {PLANS[lastTx.plan]?.name}
+              </div>
+              <p className="text-sm text-gray-500 mt-2">Kirim PayPal ke akun admin berikut</p>
             </div>
 
-            {/* Admin PayPal info */}
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6 space-y-4">
               <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Kirim PayPal ke</p>
               <div className="space-y-3">
@@ -125,10 +146,8 @@ export default function Convert() {
                     <p className="text-xs text-gray-500">Email PayPal Admin</p>
                     <p className="font-mono font-bold text-lg text-white">{lastTx.adminPaypal}</p>
                   </div>
-                  <button
-                    onClick={() => copyText(lastTx.adminPaypal, 'paypal')}
-                    className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 hover:bg-blue-500/20 transition-colors"
-                  >
+                  <button onClick={() => copyText(lastTx.adminPaypal, 'paypal')}
+                    className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 hover:bg-blue-500/20 transition-colors">
                     {copied === 'paypal' ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
                   </button>
                 </div>
@@ -138,17 +157,14 @@ export default function Convert() {
                     <p className="text-xs text-gray-500">Jumlah yang dikirim</p>
                     <p className="font-bold text-lg text-blue-400">${lastTx.usd.toFixed(2)} USD</p>
                   </div>
-                  <button
-                    onClick={() => copyText(lastTx.usd.toFixed(2), 'amount')}
-                    className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 hover:bg-blue-500/20 transition-colors"
-                  >
+                  <button onClick={() => copyText(lastTx.usd.toFixed(2), 'amount')}
+                    className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 hover:bg-blue-500/20 transition-colors">
                     {copied === 'amount' ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Instructions */}
             <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 sm:p-6 space-y-2">
               <p className="text-xs font-bold text-amber-400 uppercase tracking-wider">Petunjuk</p>
               <ol className="list-decimal ml-4 space-y-1.5 text-sm text-amber-200/80">
@@ -161,17 +177,17 @@ export default function Convert() {
           </div>
 
           <div className="space-y-4 sm:space-y-6">
-            {/* Summary */}
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6">
               <h3 className="font-bold text-white mb-4 text-sm">Ringkasan</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Jumlah</span><span className="text-white">${lastTx.usd.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Kurs beli</span><span className="text-white">Rp {buyRate.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Kurs beli</span><span className="text-white">Rp {effectiveRate.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Biaya Layanan</span><span className={`font-medium ${PLANS[lastTx.plan]?.textColor}`}>Rp {PLANS[lastTx.plan]?.serviceFee.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Biaya Admin</span><span className={`font-medium ${PLANS[lastTx.plan]?.textColor}`}>Rp {PLANS[lastTx.plan]?.adminFee.toLocaleString('id-ID')}</span></div>
                 <div className="flex justify-between pt-3 border-t border-white/[0.06]"><span className="text-gray-400 font-medium">Kamu terima</span><span className="text-green-400 font-bold">Rp {lastTx.idr.toLocaleString('id-ID')}</span></div>
               </div>
             </div>
 
-            {/* Queue */}
             {queue && queue.total > 0 && (
               <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 flex items-start gap-3">
                 <FiClock className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
@@ -182,7 +198,6 @@ export default function Convert() {
               </div>
             )}
 
-            {/* Actions */}
             <div className="grid grid-cols-1 gap-2">
               <button onClick={() => setLastTx(null)} className="btn-outline text-center text-xs py-3">Convert Lagi</button>
               <Link to={`/tracking/${lastTx.id}`} className="px-3 py-3 bg-white/5 border border-white/10 text-white font-medium rounded-xl hover:bg-white/[0.08] transition-colors text-xs text-center">Lacak Transaksi</Link>
@@ -194,7 +209,7 @@ export default function Convert() {
     )
   }
 
-  // ----- FORM STATE -----
+  // ==================== FORM STATE ====================
   return (
     <div>
       <div className="max-w-4xl mx-auto">
@@ -210,9 +225,37 @@ export default function Convert() {
           </div>
         </div>
 
+        {/* Plan Selector */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+          {Object.entries(PLANS).map(([key, p]) => {
+            const Icon = p.icon
+            const isSelected = plan === key
+            return (
+              <button key={key} type="button" onClick={() => setPlan(key)}
+                className={`relative p-4 sm:p-5 rounded-2xl border-2 transition-all duration-300 text-left ${
+                  isSelected ? `${p.borderColor} ${p.bgColor}` : 'border-white/10 hover:border-white/20 bg-white/[0.02]'
+                }`}>
+                {key === 'premium' && (
+                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                    POPULER
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon size={20} className={isSelected ? p.textColor : 'text-gray-500'} />
+                  <span className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-gray-400'}`}>{p.name}</span>
+                </div>
+                <p className={`text-2xl sm:text-3xl font-black mb-1 ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                  Rp {p.totalFee.toLocaleString('id-ID')}
+                </p>
+                <p className={`text-xs ${isSelected ? p.textColor : 'text-gray-500'}`}>{p.desc}</p>
+              </button>
+            )
+          })}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <form onSubmit={handleConvert} className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Kurs realtime badge */}
+            {/* Kurs realtime */}
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
@@ -220,9 +263,9 @@ export default function Convert() {
                     <FiInfo className="w-4 h-4 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-blue-400/70 font-medium">Kurs beli realtime</p>
+                    <p className="text-xs text-blue-400/70 font-medium">Kurs beli saat ini</p>
                     <p className="text-sm font-bold text-blue-400">
-                      1 USD = Rp {buyRate.toLocaleString('id-ID')}
+                      1 USD = Rp {effectiveRate.toLocaleString('id-ID')}
                     </p>
                   </div>
                 </div>
@@ -238,36 +281,24 @@ export default function Convert() {
               )}
             </div>
 
-            {/* Form fields */}
+            {/* Form */}
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Jumlah USD</label>
                 <div className="relative">
                   <span className="absolute left-4 top-3.5 text-gray-500">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    value={usd}
-                    onChange={(e) => setUsd(e.target.value)}
+                  <input type="number" step="0.01" min="1" value={usd} onChange={(e) => setUsd(e.target.value)}
                     className="w-full pl-9 pr-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                    placeholder="0.00"
-                    required
-                  />
+                    placeholder="0.00" required />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Minimal $1.00</p>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Email PayPal pengirim</label>
-                <input
-                  type="email"
-                  value={paypalEmail}
-                  onChange={(e) => setPaypalEmail(e.target.value)}
+                <input type="email" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)}
                   className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                  placeholder="paypal@email.com"
-                />
-                <p className="text-xs text-gray-500 mt-1">Email ini akan digunakan admin untuk verifikasi</p>
+                  placeholder="paypal@email.com" />
               </div>
             </div>
 
@@ -277,68 +308,42 @@ export default function Convert() {
               <p className="text-xs text-gray-500 -mt-2">Pembayaran Rupiah akan dikirim ke rekening ini</p>
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Nama Bank</label>
-                <input
-                  type="text"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
+                <input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)}
                   className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                  placeholder="BCA / Mandiri / BNI / BRI ..."
-                  required
-                />
+                  placeholder="BCA / Mandiri / BNI / BRI ..." required />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Nomor Rekening</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={bankAccount}
-                  onChange={(e) => setBankAccount(e.target.value)}
+                <input type="text" inputMode="numeric" value={bankAccount} onChange={(e) => setBankAccount(e.target.value)}
                   className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                  placeholder="1234567890"
-                  required
-                />
+                  placeholder="1234567890" required />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Atas Nama</label>
-                <input
-                  type="text"
-                  value={bankHolder}
-                  onChange={(e) => setBankHolder(e.target.value)}
+                <input type="text" value={bankHolder} onChange={(e) => setBankHolder(e.target.value)}
                   className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                  placeholder="Nama sesuai buku tabungan"
-                  required
-                />
+                  placeholder="Nama sesuai buku tabungan" required />
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
-            >
+            <button type="submit" disabled={loading}
+              className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 disabled:opacity-50 text-sm flex items-center justify-center gap-2 active:scale-[0.98]">
               <FiSend size={18} />
               {loading ? 'Memproses...' : 'Kirim Permintaan Convert'}
               <FiArrowRight size={18} />
             </button>
           </form>
 
-          {/* Right column: summary + info */}
+          {/* Right sidebar */}
           <div className="space-y-4 sm:space-y-6">
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6">
               <h3 className="font-bold text-white mb-4 text-sm">Ringkasan</h3>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Jumlah</span>
-                  <span className="text-white">${usdNum ? usdNum.toFixed(2) : '0.00'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Kurs beli</span>
-                  <span className="text-white">Rp {buyRate.toLocaleString('id-ID')}</span>
-                </div>
-                <div className="flex justify-between pt-3 border-t border-white/[0.06]">
-                  <span className="text-gray-400 font-medium">Kamu terima</span>
-                  <span className="text-green-400 font-bold">Rp {idr.toLocaleString('id-ID')}</span>
-                </div>
+                <div className="flex justify-between"><span className="text-gray-500">Jumlah</span><span className="text-white">${usdNum ? usdNum.toFixed(2) : '0.00'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Kurs beli</span><span className="text-white">Rp {effectiveRate.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Biaya Layanan</span><span className={`font-medium ${selectedPlan.textColor}`}>Rp {selectedPlan.serviceFee.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Biaya Admin</span><span className={`font-medium ${selectedPlan.textColor}`}>Rp {selectedPlan.adminFee.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between pt-3 border-t border-white/[0.06]"><span className="text-gray-400 font-medium">Kamu terima</span><span className="text-green-400 font-bold">Rp {idrAfterFee.toLocaleString('id-ID')}</span></div>
               </div>
               {usdNum > 0 && (
                 <div className="mt-4 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/15 p-4">
@@ -346,7 +351,7 @@ export default function Convert() {
                     <FiArrowRight className="w-3.5 h-3.5 text-green-400" />
                     <p className="text-[10px] text-green-400/80 font-medium uppercase tracking-wider">Hasil konversi</p>
                   </div>
-                  <p className="text-2xl font-black text-green-400">Rp {idr.toLocaleString('id-ID')}</p>
+                  <p className="text-2xl font-black text-green-400">Rp {idrAfterFee.toLocaleString('id-ID')}</p>
                 </div>
               )}
             </div>
@@ -354,8 +359,8 @@ export default function Convert() {
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6 space-y-3">
               <h3 className="font-bold text-white text-sm">Info</h3>
               {[
-                { icon: FiClock, text: 'Proses 1-24 jam' },
-                { icon: FiShield, text: 'Verifikasi manual oleh admin' },
+                { icon: FiClock, text: selectedPlan.desc },
+                { icon: FiShield, text: 'Garansi uang kembali' },
                 { icon: FiGlobe, text: 'Kurs update otomatis' },
                 { icon: FiLock, text: 'Data terenkripsi' },
               ].map((info, i) => {

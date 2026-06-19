@@ -1,23 +1,69 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore'
+import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { FiPlus, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiSend } from 'react-icons/fi'
+import { FiPlus, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiSend, FiCreditCard } from 'react-icons/fi'
+
+// Spread kecil membedakan kurs beli vs jual (selaras dengan Convert/Topup)
+const BUY_SPREAD = 100
+const SELL_SPREAD = 100
 
 export default function Dashboard() {
   const { profile } = useAuth()
   const [txs, setTxs] = useState([])
   const [queue, setQueue] = useState(null)
-  const [rate, setRate] = useState({ buy: 15000, sell: 14500 })
+  const [baseRate, setBaseRate] = useState(null) // usdToIdr realtime dari settings/rates
 
+  // Kurs realtime via onSnapshot (di-update tiap jam oleh kurs service)
   useEffect(() => {
-    if (!profile) return
-    const q = query(collection(db, 'transactions'), where('userId', '==', profile.id), orderBy('createdAt', 'desc'), limit(10))
-    const unsub = onSnapshot(q, (snap) => setTxs(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+    const unsub = onSnapshot(
+      doc(db, 'settings', 'rates'),
+      (snap) => {
+        if (snap.exists()) setBaseRate(Number(snap.data().usdToIdr) || null)
+      },
+      () => {}
+    )
     return unsub
-  }, [profile])
+  }, [])
+
+  // Transaksi user via API (lebih reliable daripada Firestore client query
+  // karena server sudah punya index composite untuk userId)
+  useEffect(() => {
+    if (!profile?.id) return
+    const fetch = () => {
+      api.get('/transactions')
+        .then(({ data }) => {
+          // Ambil 10 terakhir dan normalisasi field nominal
+          const normalized = (Array.isArray(data) ? data : [])
+            .map((tx) => {
+              const type = tx.type
+              let amountUSD = tx.amountUSD
+              let amountIDR = tx.amountIDR
+              if (type === 'convert') {
+                if (amountUSD === undefined || amountUSD === null) amountUSD = tx.amount
+                if (amountIDR === undefined || amountIDR === null) amountIDR = tx.total
+              } else if (type === 'topup') {
+                if (amountIDR === undefined || amountIDR === null) amountIDR = tx.amount
+                if (amountUSD === undefined || amountUSD === null) amountUSD = tx.total
+              } else if (type === 'credit_card') {
+                if (amountUSD === undefined || amountUSD === null) amountUSD = tx.amount
+              }
+              return {
+                ...tx,
+                amountUSD: Number(amountUSD) || 0,
+                amountIDR: Number(amountIDR) || 0,
+              }
+            })
+          setTxs(normalized)
+        })
+        .catch(() => {})
+    }
+    fetch()
+    const t = setInterval(fetch, 15000)
+    return () => clearInterval(t)
+  }, [profile?.id])
 
   useEffect(() => {
     const fetch = () => api.get('/transactions/queue').then(({ data }) => setQueue(data)).catch(() => {})
@@ -31,6 +77,10 @@ export default function Dashboard() {
     if (mins >= 60) return `~${Math.round(mins / 60)} jam`
     return `~${mins} menit`
   }
+
+  // Turunkan kurs beli/jual dari base rate realtime
+  const buyRate = baseRate ? Math.max(baseRate - BUY_SPREAD, 1) : 0
+  const sellRate = baseRate ? baseRate + SELL_SPREAD : 0
 
   const hasPending = txs.some(t => t.status === 'pending' || t.status === 'processing')
 
@@ -80,7 +130,9 @@ export default function Dashboard() {
               </div>
               <p className="text-xs font-medium text-gray-500">Kurs Beli</p>
             </div>
-            <p className="text-xl font-black text-white">Rp {(rate.buy || 0).toLocaleString('id-ID')}</p>
+            <p className="text-xl font-black text-white">
+              Rp {buyRate ? buyRate.toLocaleString('id-ID') : (baseRate || 0).toLocaleString('id-ID')}
+            </p>
             <p className="text-[10px] text-gray-500 mt-1">USD → IDR</p>
           </div>
 
@@ -92,7 +144,9 @@ export default function Dashboard() {
               </div>
               <p className="text-xs font-medium text-gray-500">Kurs Jual</p>
             </div>
-            <p className="text-xl font-black text-white">Rp {(rate.sell || 0).toLocaleString('id-ID')}</p>
+            <p className="text-xl font-black text-white">
+              Rp {sellRate ? sellRate.toLocaleString('id-ID') : (baseRate || 0).toLocaleString('id-ID')}
+            </p>
             <p className="text-[10px] text-gray-500 mt-1">IDR → USD</p>
           </div>
         </div>
@@ -168,7 +222,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="divide-y divide-white/[0.04]">
-            {txs.map(tx => (
+            {txs.slice(0, 10).map(tx => (
               <Link
                 key={tx.id}
                 to={`/tracking/${tx.id}`}
@@ -176,16 +230,18 @@ export default function Dashboard() {
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    tx.type === 'convert' ? 'bg-blue-500/10' : 'bg-green-500/10'
+                    tx.type === 'convert' ? 'bg-blue-500/10' : tx.type === 'credit_card' ? 'bg-orange-500/10' : 'bg-green-500/10'
                   }`}>
                     {tx.type === 'convert'
                       ? <FiSend className="w-4 h-4 text-blue-400" />
-                      : <FiPlus className="w-4 h-4 text-green-400" />
+                      : tx.type === 'credit_card'
+                        ? <FiCreditCard className="w-4 h-4 text-orange-400" />
+                        : <FiPlus className="w-4 h-4 text-green-400" />
                     }
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-white truncate">
-                      {tx.type === 'convert' ? 'Convert PayPal → IDR' : 'Top Up PayPal'}
+                      {tx.type === 'convert' ? 'Convert PayPal → IDR' : tx.type === 'credit_card' ? 'Jasa CC' : 'Top Up PayPal'}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">{new Date(tx.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     {(tx.status === 'pending' || tx.status === 'processing') && queue && queue.total > 0 && (
@@ -195,7 +251,11 @@ export default function Dashboard() {
                 </div>
                 <div className="text-right shrink-0 ml-4">
                   <p className="font-bold text-white">
-                    {tx.type === 'convert' ? `$${tx.amount}` : `Rp ${(tx.amount || 0).toLocaleString('id-ID')}`}
+                    {tx.type === 'convert'
+                      ? `$${(tx.amountUSD ?? 0).toFixed(2)}`
+                      : tx.type === 'credit_card'
+                        ? `$${(tx.amountUSD ?? 0).toFixed(2)}`
+                        : `Rp ${(tx.amountIDR ?? 0).toLocaleString('id-ID')}`}
                   </p>
                   <div className="mt-1">
                     {statusBadge(tx.status)}
