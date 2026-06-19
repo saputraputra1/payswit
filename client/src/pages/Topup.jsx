@@ -20,7 +20,7 @@ const PLANS = {
   },
   premium: {
     name: 'Premium',
-    fee: 20000,
+    fee: 15000,
     kursBonus: 1000,
     icon: FiStar,
     color: 'from-yellow-500 to-orange-500',
