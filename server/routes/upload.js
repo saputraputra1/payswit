@@ -11,7 +11,7 @@ module.exports = function () {
         return res.status(400).json({ error: 'Image required' })
       }
 
-      const API_KEY = process.env.IMGBB_API_KEY || '15a5589618c85266bea80ce880176878'
+      const API_KEY = process.env.IMGBB_API_KEY || '5068538056696953c7738c0499cb062d'
       const params = new URLSearchParams()
       params.append('key', API_KEY)
       params.append('image', image)
