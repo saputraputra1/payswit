@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { db } from '../services/firebase'
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where } from 'firebase/firestore'
 import api from '../services/api'
-import { uploadChatImage } from '../services/upload'
+import { uploadImage } from '../services/upload'
 import { FiSend, FiMessageSquare, FiCpu, FiUser, FiImage, FiX, FiDownload } from 'react-icons/fi'
 
 export default function Chat() {
@@ -71,7 +71,7 @@ export default function Chat() {
       let imageUrl = null
       if (selectedImage) {
         setUploading(true)
-        imageUrl = await uploadChatImage(selectedImage, user.uid)
+        imageUrl = await uploadImage(selectedImage)
         setUploading(false)
         removeImage()
       }

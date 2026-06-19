@@ -1,72 +1,28 @@
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
-import { storage } from './firebase'
-
-export async function uploadChatImage(file, userId) {
+export async function uploadImage(file) {
   return new Promise((resolve, reject) => {
-    const timestamp = Date.now()
-    const filename = `${timestamp}_${file.name}`
-    const storageRef = ref(storage, `chat/${userId}/${filename}`)
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('key', '15a5589618c85266bea80ce880176878')
 
-    const task = uploadBytesResumable(storageRef, file)
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', 'https://api.imgbb.com/1/upload')
 
-    task.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-        console.log(`[Upload] ${progress.toFixed(0)}%`)
-      },
-      (error) => {
-        console.error('[Upload] Error:', error)
-        if (error.code === 'storage/unauthorized') {
-          reject(new Error('Tidak punya akses upload'))
-        } else if (error.code === 'storage/canceled') {
-          reject(new Error('Upload dibatalkan'))
+    xhr.onload = () => {
+      try {
+        const res = JSON.parse(xhr.responseText)
+        if (res.success) {
+          resolve(res.data.url)
         } else {
-          reject(new Error('Gagal upload gambar'))
+          reject(new Error('Gagal upload'))
         }
-      },
-      async () => {
-        try {
-          const downloadUrl = await getDownloadURL(task.snapshot.ref)
-          resolve(downloadUrl)
-        } catch (err) {
-          reject(new Error('Gagal dapatkan URL gambar'))
-        }
+      } catch (e) {
+        reject(new Error('Gagal upload'))
       }
-    )
-  })
-}
-
-export async function uploadImage(file, path = 'uploads') {
-  return new Promise((resolve, reject) => {
-    const timestamp = Date.now()
-    const filename = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-    const storageRef = ref(storage, `${path}/${filename}`)
-
-    const metadata = {
-      contentType: file.type,
     }
 
-    const task = uploadBytesResumable(storageRef, file, metadata)
+    xhr.onerror = () => reject(new Error('Gagal upload'))
+    xhr.ontimeout = () => reject(new Error('Timeout'))
 
-    task.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-        console.log(`[Upload] ${progress.toFixed(0)}%`)
-      },
-      (error) => {
-        console.error('[Upload] Error:', error.message)
-        reject(error)
-      },
-      async () => {
-        try {
-          const url = await getDownloadURL(task.snapshot.ref)
-          resolve(url)
-        } catch (err) {
-          reject(err)
-        }
-      }
-    )
+    xhr.send(formData)
   })
 }
