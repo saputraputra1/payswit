@@ -1,33 +1,26 @@
 const express = require('express')
-const authMiddleware = require('../middleware/auth')
+const fs = require('fs')
+const path = require('path')
 
 module.exports = function () {
   const router = express.Router()
+  const UPLOAD_DIR = path.join(__dirname, '..', 'uploads')
+
+  if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true })
 
   router.post('/upload', async (req, res) => {
     try {
       const { image } = req.body
-      if (!image) {
-        return res.status(400).json({ error: 'Image required' })
-      }
+      if (!image) return res.status(400).json({ error: 'Image required' })
 
-      const API_KEY = process.env.IMGBB_API_KEY || '5068538056696953c7738c0499cb062d'
-      const params = new URLSearchParams()
-      params.append('key', API_KEY)
-      params.append('image', image)
+      const buf = Buffer.from(image, 'base64')
+      const filename = Date.now() + '-' + Math.random().toString(36).substring(2, 8) + '.jpg'
+      const filepath = path.join(UPLOAD_DIR, filename)
+      fs.writeFileSync(filepath, buf)
 
-      const response = await fetch('https://api.imgbb.com/1/upload', {
-        method: 'POST',
-        body: params,
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        res.json({ url: data.data.url })
-      } else {
-        res.status(400).json({ error: 'Upload failed: ' + (data.error?.message || 'unknown') })
-      }
+      const host = req.headers.host || 'localhost:5000'
+      const protocol = req.headers['x-forwarded-proto'] || 'http'
+      res.json({ url: `${protocol}://${host}/uploads/${filename}` })
     } catch (err) {
       res.status(500).json({ error: err.message })
     }
