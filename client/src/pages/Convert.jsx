@@ -42,7 +42,7 @@ const PLANS = {
   },
 }
 
-const BUY_SPREAD = 100
+const BUY_SPREAD = 1500
 
 export default function Convert() {
   const { profile } = useAuth()
@@ -405,8 +405,8 @@ export default function Convert() {
                   <FiCreditCard className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Saldo kamu</p>
-                  <p className="font-bold text-white">${(profile.balance || 0).toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">Rekening penerima</p>
+                  <p className="font-bold text-white">{selectedAccountId ? adminAccounts.find(a => a.id === selectedAccountId)?.bankName : 'Belum dipilih'}</p>
                 </div>
               </div>
             )}

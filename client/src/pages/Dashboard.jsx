@@ -4,11 +4,12 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { FiPlus, FiArrowUp, FiArrowDown, FiClock, FiDollarSign, FiSend, FiCreditCard } from 'react-icons/fi'
+import { FiPlus, FiArrowUp, FiArrowDown, FiClock, FiSend, FiCreditCard } from 'react-icons/fi'
 
-// Spread kecil membedakan kurs beli vs jual (selaras dengan Convert/Topup)
-const BUY_SPREAD = 100
-const SELL_SPREAD = 100
+// Spread membedakan kurs beli vs jual (selaras dengan Convert/Topup)
+// Saldo dihapus dari Dashboard karena diproses manual, bukan otomatis
+const BUY_SPREAD = 1500
+const SELL_SPREAD = 1500
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -104,24 +105,8 @@ export default function Dashboard() {
         <p className="text-sm text-gray-500 mt-1">Selamat datang kembali, {profile?.name?.split(' ')[0] || 'User'}</p>
       </div>
 
-      {/* Stats Cards */}
-      {profile && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Balance Card - Featured */}
-          <div className="sm:col-span-1 relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-5 text-white">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                  <FiDollarSign className="w-4 h-4" />
-                </div>
-                <p className="text-xs font-medium text-blue-100">Saldo IDR</p>
-              </div>
-              <p className="text-2xl font-black">Rp {(profile.balance || 0).toLocaleString('id-ID')}</p>
-            </div>
-          </div>
-
+      {/* Stats Cards - Kurs Beli & Jual (saldo dihapus, diproses manual) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Buy Rate */}
           <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -149,8 +134,7 @@ export default function Dashboard() {
             </p>
             <p className="text-[10px] text-gray-500 mt-1">IDR → USD</p>
           </div>
-        </div>
-      )}
+      </div>
 
       {/* Quick Actions */}
       <div>
