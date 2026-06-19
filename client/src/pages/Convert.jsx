@@ -1,221 +1,158 @@
-import { useState, useEffect } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import api from '../services/api'
-import toast from 'react-hot-toast'
-import { FiRepeat, FiDollarSign, FiCheck, FiZap, FiStar, FiArrowRight, FiCopy } from 'react-icons/fi'
-import { BankIcon } from '../components/Icons'
-
-const PLANS = {
-  standard: {
-    name: 'Standard',
-    serviceFee: 15000,
-    adminFee: 15000,
-    totalFee: 30000,
-    kursBonus: 0,
-    icon: FiZap,
-    color: 'from-blue-500 to-cyan-500',
-    borderColor: 'border-blue-500',
-    bgColor: 'bg-blue-500/10',
-    textColor: 'text-blue-400',
-    desc: 'Proses 1-24 jam',
-    features: ['Verifikasi manual', 'Proses 1-24 jam'],
-  },
-  premium: {
-    name: 'Priority',
-    serviceFee: 15000,
-    adminFee: 20000,
-    totalFee: 35000,
-    kursBonus: 1000,
-    icon: FiStar,
-    color: 'from-yellow-500 to-orange-500',
-    borderColor: 'border-yellow-500',
-    bgColor: 'bg-yellow-500/10',
-    textColor: 'text-yellow-400',
-    desc: 'Proses 15-30 menit',
-    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Kurs +Rp 1.000/USD'],
-  },
-}
+import { useState, useEffect } from 'react';
+import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
+import { Repeat, Send, DollarSign, Check, Copy, Hourglass } from 'lucide-react';
 
 export default function Convert() {
-  const { user } = useAuth()
-  const [amountUSD, setAmountUSD] = useState('')
-  const [rates, setRates] = useState(null)
-  const [paypalEmail, setPaypalEmail] = useState('')
-  const [plan, setPlan] = useState('standard')
-  const [bankAccounts, setBankAccounts] = useState([])
-  const [selectedBank, setSelectedBank] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState('')
+  const { profile } = useAuth();
+  const [usd, setUsd] = useState('');
+  const [rate, setRate] = useState({ buy: 15500 });
+  const [paypalEmail, setPaypalEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [lastTx, setLastTx] = useState(null);
+  const [queue, setQueue] = useState(null);
+  const [copied, setCopied] = useState('');
 
   useEffect(() => {
-    api.get('/rates').then((res) => setRates(res.data)).catch(() => {})
-    api.get('/bank-accounts').then((res) => {
-      setBankAccounts(res.data)
-      if (res.data.length > 0) setSelectedBank(res.data[0])
-    }).catch(() => {})
-  }, [])
+    (async () => {
+      const snap = await getDocs(collection(db, 'rates'));
+      const r = snap.docs[0]?.data();
+      if (r) setRate(r);
+    })();
+  }, []);
 
-  const selectedPlan = PLANS[plan]
-  const effectiveKurs = rates ? rates.usdToIdr + selectedPlan.kursBonus : 0
-  const estimatedIDR = amountUSD && rates ? (parseFloat(amountUSD) * effectiveKurs) : 0
-  const totalReceive = estimatedIDR - selectedPlan.totalFee
+  const idr = usd ? parseFloat(usd) * rate.buy : 0;
 
-  function copyText(text, field) {
-    navigator.clipboard.writeText(text)
-    setCopied(field)
-    toast.success('Disalin!')
-    setTimeout(() => setCopied(''), 2000)
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!amountUSD || parseFloat(amountUSD) < 1) { toast.error('Minimal convert $1'); return }
-    setLoading(true)
+  const handleConvert = async () => {
+    if (!usd || parseFloat(usd) < 1) return toast.error('Minimal $1');
+    if (!paypalEmail && !profile?.paypal_email) return toast.error('Masukkan email PayPal kamu');
+    setLoading(true);
     try {
-      await api.post('/transactions', {
-        type: 'convert', amountUSD: parseFloat(amountUSD),
-        amountIDR: estimatedIDR,
-        paypalEmail, bankName: selectedBank?.bankName, bankAccount: selectedBank?.accountNumber, bankHolder: selectedBank?.accountHolder,
-        plan, serviceFee: selectedPlan.serviceFee, adminFee: selectedPlan.adminFee, totalFee: selectedPlan.totalFee, totalReceive,
-      })
-      toast.success('Permintaan convert berhasil!')
-      setAmountUSD(''); setPaypalEmail('')
-    } catch (err) { toast.error(err.response?.data?.error || 'Gagal') }
-    setLoading(false)
-  }
+      const txRef = await addDoc(collection(db, 'transactions'), {
+        userId: profile.id,
+        userName: profile.name,
+        type: 'convert',
+        from_currency: 'PAYPAL',
+        to_currency: 'IDR',
+        amount: parseFloat(usd),
+        rate: rate.buy,
+        total: idr,
+        paypal_email: paypalEmail || profile?.paypal_email,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      setLastTx({ id: txRef.id, usd: parseFloat(usd), idr, adminPaypal: rate.adminPaypalEmail || 'admin@payswit.com' });
+      api.get('/transactions/queue').then(({ data }) => setQueue(data)).catch(() => {});
+      toast.success('Permintaan convert terkirim!');
+      setUsd('');
+    } catch { toast.error('Gagal kirim permintaan'); }
+    finally { setLoading(false); }
+  };
+
+  const copyText = (text, label) => {
+    navigator.clipboard.writeText(text);
+    setCopied(label);
+    setTimeout(() => setCopied(''), 2000);
+  };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="mb-6 sm:mb-8 animate-fade-in">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
-              <FiRepeat size={20} className="text-white sm:w-6 sm:h-6" />
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-2xl font-bold text-white">Convert PayPal → IDR</h1>
-              <p className="text-gray-500 text-xs sm:text-sm">Pilih paket dan tarik saldo</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4 sm:gap-6">
-          <div className="space-y-4 sm:space-y-6 animate-slide-in-left">
-            <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-              {Object.entries(PLANS).map(([key, p]) => {
-                const Icon = p.icon
-                const isSelected = plan === key
-                return (
-                  <button key={key} type="button" onClick={() => setPlan(key)}
-                    className={`relative p-4 sm:p-5 rounded-2xl border-2 transition-all duration-300 text-left ${
-                      isSelected ? `${p.borderColor} ${p.bgColor}` : 'border-white/10 hover:border-white/20 bg-white/[0.02]'
-                    }`}>
-                    {key === 'premium' && (
-                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-[10px] font-bold rounded-full">POPULER</div>
-                    )}
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon size={20} className={isSelected ? p.textColor : 'text-gray-500'} />
-                      <span className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-gray-400'}`}>{p.name}</span>
-                    </div>
-                    <p className={`text-2xl sm:text-3xl font-black mb-1 ${isSelected ? 'text-white' : 'text-gray-400'}`}>Rp {p.totalFee.toLocaleString('id-ID')}</p>
-                    <p className={`text-xs ${isSelected ? p.textColor : 'text-gray-500'}`}>Biaya layanan + admin</p>
-                    <ul className="mt-3 space-y-1.5">
-                      {p.features.map((f, i) => (
-                        <li key={i} className={`flex items-center gap-2 text-xs ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                          <FiCheck size={12} className={isSelected ? p.textColor : 'text-gray-600'} />{f}
-                        </li>
-                      ))}
-                    </ul>
-                  </button>
-                )
-              })}
-            </div>
-
-            {rates && (
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-                <FiDollarSign className="text-blue-400 flex-shrink-0" />
-                <p className="text-xs sm:text-sm text-blue-300">Kurs: <span className="font-bold">1 USD = Rp {effectiveKurs?.toLocaleString('id-ID')}</span> {selectedPlan.kursBonus > 0 && <span className="text-green-400">(+{selectedPlan.kursBonus.toLocaleString('id-ID')})</span>}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="animate-slide-in-right">
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6 space-y-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-400 mb-1.5">Jumlah (USD)</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-3.5 text-gray-500">$</span>
-                    <input type="number" step="0.01" min="1" value={amountUSD} onChange={(e) => setAmountUSD(e.target.value)}
-                      className="w-full pl-9 pr-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                      placeholder="0.00" required />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 sm:p-3">
-                    <p className="text-[10px] text-gray-500 mb-0.5">Estimasi</p>
-                    <p className="font-bold text-white text-xs sm:text-sm">Rp {estimatedIDR.toLocaleString('id-ID')}</p>
-                  </div>
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 sm:p-3">
-                    <p className="text-[10px] text-gray-500 mb-0.5">Biaya Layanan</p>
-                    <p className={`font-bold text-xs sm:text-sm ${selectedPlan.textColor}`}>-Rp {selectedPlan.serviceFee.toLocaleString('id-ID')}</p>
-                  </div>
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 sm:p-3">
-                    <p className="text-[10px] text-gray-500 mb-0.5">Biaya Admin</p>
-                    <p className={`font-bold text-xs sm:text-sm ${selectedPlan.textColor}`}>-Rp {selectedPlan.adminFee.toLocaleString('id-ID')}</p>
-                  </div>
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 sm:p-3">
-                    <p className="text-[10px] text-gray-500 mb-0.5">Terima</p>
-                    <p className="font-black text-green-400 text-xs sm:text-sm">Rp {totalReceive.toLocaleString('id-ID')}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-400 mb-1.5">Email PayPal</label>
-                  <input type="email" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/[0.03] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                    placeholder="paypal@email.com" required />
-                </div>
-              </div>
-
-              <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 sm:p-6">
-                <h3 className="font-bold text-white mb-2 text-sm">Rekening Tujuan</h3>
-                <p className="text-xs text-gray-500 mb-4">Pilih rekening admin untuk menerima dana</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {bankAccounts.map((bank) => (
-                    <button key={bank.id} type="button" onClick={() => setSelectedBank(bank)}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${
-                        selectedBank?.id === bank.id ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 hover:border-white/20 bg-white/[0.02]'
-                      }`}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <BankIcon bankName={bank.bankName} size="md" />
-                        <div>
-                          <p className="font-bold text-white text-sm">{bank.bankName}</p>
-                          <p className="text-xs text-gray-500">a.n {bank.accountHolder}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between bg-white/[0.03] rounded-lg p-2.5">
-                        <p className="font-mono text-white text-sm">{bank.accountNumber}</p>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); copyText(bank.accountNumber, bank.id) }}
-                          className="p-1 text-gray-400 hover:text-white rounded">
-                          {copied === bank.id ? <FiCheck size={14} className="text-green-400" /> : <FiCopy size={14} />}
-                        </button>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button type="submit" disabled={loading}
-                className={`w-full py-4 bg-gradient-to-r ${selectedPlan.color} text-white font-bold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 text-sm flex items-center justify-center gap-2 active:scale-[0.98]`}>
-                {loading ? 'Memproses...' : 'Ajukan Convert'}
-                <FiArrowRight size={18} />
-              </button>
-            </form>
-          </div>
-        </div>
+    <div className="max-w-lg mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Convert PayPal → IDR</h1>
+        <p className="text-gray-500">Tukar saldo PayPal kamu ke Rupiah</p>
       </div>
+
+      {!lastTx ? (
+        <div className="card space-y-4">
+          <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-700">
+            Kurs beli saat ini: <strong>1 USD = Rp {rate.buy.toLocaleString('id-ID')}</strong>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Jumlah USD yang ingin ditukar</label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <input type="number" className="input-field pl-10" placeholder="Minimal $1" value={usd} onChange={e => setUsd(e.target.value)} min="1" step="0.01" />
+            </div>
+          </div>
+
+          {usd > 0 && (
+            <div className="bg-green-50 rounded-lg p-4 text-center">
+              <p className="text-sm text-green-600">Kamu akan menerima</p>
+              <p className="text-3xl font-bold text-green-700">Rp {idr.toLocaleString('id-ID', { minimumFractionDigits: 0 })}</p>
+              <p className="text-xs text-green-600 mt-1">Ditransfer ke rekening bank kamu setelah admin verifikasi</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Email PayPal pengirim</label>
+            <input type="email" className="input-field" placeholder="paypal@email.com" value={paypalEmail} onChange={e => setPaypalEmail(e.target.value)} />
+            <p className="text-xs text-gray-400 mt-1">Email ini akan digunakan admin untuk verifikasi</p>
+          </div>
+
+          <button onClick={handleConvert} disabled={loading || !usd} className="btn-primary w-full flex items-center justify-center gap-2">
+            <Send className="w-4 h-4" /> {loading ? 'Memproses...' : 'Kirim Permintaan Convert'}
+          </button>
+        </div>
+      ) : (
+        <div className="card space-y-4">
+          <div className="text-center">
+            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Check className="w-7 h-7 text-green-600" />
+            </div>
+            <h2 className="text-xl font-bold text-green-700">Permintaan Dibuat!</h2>
+            <p className="text-sm text-gray-500 mt-1">Kirim PayPal ke akun admin berikut</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Kirim PayPal ke:</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">Email PayPal Admin</p>
+                  <p className="font-mono font-bold text-lg">{lastTx.adminPaypal}</p>
+                </div>
+                <button onClick={() => copyText(lastTx.adminPaypal, 'paypal')} className="text-primary-600 hover:text-primary-700">
+                  {copied === 'paypal' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Jumlah yang dikirim</p>
+                <p className="font-bold text-lg text-primary-700">${lastTx.usd.toFixed(2)} USD</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 rounded-lg p-3 text-xs text-yellow-700 space-y-1">
+            <p className="font-medium">Petunjuk:</p>
+            <ol className="list-decimal ml-4 space-y-0.5">
+              <li>Kirim <strong>${lastTx.usd.toFixed(2)}</strong> dari PayPal kamu ke email di atas</li>
+              <li>Simpan bukti pengiriman PayPal</li>
+              <li>Kirim bukti via <strong>Chat CS</strong></li>
+              <li>Admin akan memverifikasi dan mengirim Rp {lastTx.idr.toLocaleString('id-ID')} ke rekening bank kamu</li>
+            </ol>
+          </div>
+
+          {queue && queue.total > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-sm text-amber-800">
+              <Hourglass className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">Antrian: {queue.total} transaksi</p>
+                <p className="text-xs text-amber-600">Estimasi diproses dalam ~{queue.estimatedMinutes} menit</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button onClick={() => setLastTx(null)} className="btn-outline flex-1">Convert Lagi</button>
+            <a href="/chat" className="btn-primary flex-1 text-center">Chat CS</a>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }
