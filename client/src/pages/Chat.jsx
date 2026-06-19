@@ -19,6 +19,8 @@ export default function Chat() {
     const q = query(collection(db, 'messages'), where('userId', '==', user.uid), orderBy('createdAt', 'asc'))
     const unsub = onSnapshot(q, (snapshot) => {
       setMessages(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+    }, (error) => {
+      console.error('Chat error:', error)
     })
     return unsub
   }, [user?.uid])
@@ -49,32 +51,36 @@ export default function Chat() {
 
       setAiTyping(true)
 
-      const aiRes = await api.post('/ai/chat', {
+      api.post('/ai/chat', {
         message: userMsg,
         history: chatHistory.slice(-10),
-      }).catch(() => null)
+      }).then(async (aiRes) => {
+        if (aiRes?.data?.reply) {
+          const aiReply = aiRes.data.reply
+          const source = aiRes.data.source
 
-      if (aiRes?.data?.reply) {
-        const aiReply = aiRes.data.reply
-        const source = aiRes.data.source
+          await addDoc(collection(db, 'messages'), {
+            userId: user.uid,
+            userName: 'Payswit AI',
+            text: aiReply,
+            sender: 'admin',
+            createdAt: serverTimestamp(),
+            read: true,
+            isAI: source === 'ai',
+          })
 
-        await addDoc(collection(db, 'messages'), {
-          userId: user.uid,
-          userName: 'Payswit AI',
-          text: aiReply,
-          sender: 'admin',
-          createdAt: serverTimestamp(),
-          read: true,
-          isAI: source === 'ai',
-        })
+          setChatHistory(prev => [...prev, { role: 'assistant', content: aiReply }])
+        }
+      }).catch((err) => {
+        console.error('AI Error:', err)
+      }).finally(() => {
+        setAiTyping(false)
+      })
 
-        setChatHistory(prev => [...prev, { role: 'assistant', content: aiReply }])
-      }
     } catch (err) {
-      console.error(err)
+      console.error('Send error:', err)
     }
 
-    setAiTyping(false)
     setLoading(false)
   }
 
