@@ -5,4 +5,4 @@ RUN npm install
 COPY . .
 RUN npm run build
 EXPOSE 8080
-CMD ["npx", "vite", "preview", "--port", "8080", "--host"]
+CMD ["node", "server.cjs"]
