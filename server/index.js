@@ -7,17 +7,24 @@ const app = express()
 const PORT = process.env.PORT || 5000
 
 try {
-  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+  const hasProjectId = !!process.env.FIREBASE_PROJECT_ID
+  const hasClientEmail = !!process.env.FIREBASE_CLIENT_EMAIL
+  const hasPrivateKey = !!process.env.FIREBASE_PRIVATE_KEY
+
+  if (hasProjectId && hasClientEmail && hasPrivateKey) {
+    const pk = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1')
+    console.log('[Firebase] Private key starts with:', pk.substring(0, 30))
+    console.log('[Firebase] Private key length:', pk.length)
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1'),
+        privateKey: pk,
       }),
     })
     console.log('[Firebase] Initialized successfully')
   } else {
-    console.log('[Firebase] Missing credentials - running in demo mode')
+    console.log('[Firebase] Missing credentials:', { projectId: hasProjectId, clientEmail: hasClientEmail, privateKey: hasPrivateKey })
   }
 } catch (err) {
   console.error('[Firebase] Init error:', err.message)
