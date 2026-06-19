@@ -8,7 +8,9 @@ import { BankIcon } from '../components/Icons'
 const PLANS = {
   standard: {
     name: 'Standard',
-    fee: 20000,
+    serviceFee: 15000,
+    adminFee: 15000,
+    totalFee: 30000,
     kursBonus: 0,
     icon: FiZap,
     color: 'from-blue-500 to-cyan-500',
@@ -19,7 +21,9 @@ const PLANS = {
   },
   premium: {
     name: 'Priority',
-    fee: 15000,
+    serviceFee: 15000,
+    adminFee: 20000,
+    totalFee: 35000,
     kursBonus: 1000,
     icon: FiStar,
     color: 'from-yellow-500 to-orange-500',
@@ -76,7 +80,7 @@ export default function CreditCard() {
         type: 'credit_card', amountUSD: parseFloat(amountUSD),
         amountIDR: totalIDR,
         merchantName, merchantUrl, description, cardType, paymentMethod,
-        plan, adminFee: selectedPlan.totalFee,
+        plan, adminFee: selectedPlan.adminFee, serviceFee: selectedPlan.serviceFee, totalFee: selectedPlan.totalFee,
         ccFee, totalUSD,
       })
       toast.success('Permintaan berhasil!')
