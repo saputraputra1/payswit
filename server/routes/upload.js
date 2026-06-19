@@ -11,8 +11,9 @@ module.exports = function () {
         return res.status(400).json({ error: 'Image required' })
       }
 
+      const API_KEY = process.env.IMGBB_API_KEY || '15a5589618c85266bea80ce880176878'
       const params = new URLSearchParams()
-      params.append('key', '15a5589618c85266bea80ce880176878')
+      params.append('key', API_KEY)
       params.append('image', image)
 
       const response = await fetch('https://api.imgbb.com/1/upload', {
