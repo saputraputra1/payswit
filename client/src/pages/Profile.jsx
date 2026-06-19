@@ -4,7 +4,7 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { db } from '../services/firebase';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { FiUser, FiMail, FiWallet, FiClock } from 'react-icons/fi';
+import { FiUser, FiMail, FiDollarSign, FiClock } from 'react-icons/fi';
 
 export default function Profile() {
   const { profile } = useAuth();

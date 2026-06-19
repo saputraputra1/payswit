@@ -4,7 +4,7 @@ import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/f
 import { db } from '../services/firebase'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { FiRepeat, FiPlus, FiArrowUp, FiArrowDown, FiClock, FiCheck, FiX, FiWallet } from 'react-icons/fi'
+import { FiRepeat, FiPlus, FiArrowUp, FiArrowDown, FiClock, FiCheck, FiX, FiDollarSign } from 'react-icons/fi'
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -60,7 +60,7 @@ export default function Dashboard() {
 
       {profile && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {statCard('Saldo IDR', `Rp ${(profile.balance || 0).toLocaleString('id-ID')}`, <FiWallet className="w-6 h-6 text-white" />, 'bg-primary-600')}
+          {statCard('Saldo IDR', `Rp ${(profile.balance || 0).toLocaleString('id-ID')}`, <FiDollarSign className="w-6 h-6 text-white" />, 'bg-primary-600')}
           {statCard('Kurs Beli (USD→IDR)', `Rp ${(rate.buy || 0).toLocaleString('id-ID')}`, <FiArrowDown className="w-6 h-6 text-white" />, 'bg-green-600')}
           {statCard('Kurs Jual (IDR→USD)', `Rp ${(rate.sell || 0).toLocaleString('id-ID')}`, <FiArrowUp className="w-6 h-6 text-white" />, 'bg-orange-600')}
         </div>

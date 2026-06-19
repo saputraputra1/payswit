@@ -5,7 +5,7 @@ import { db } from '../services/firebase';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
-import { FiPlus, FiCopy, FiCheck, FiHome, FiWallet, FiClock } from 'react-icons/fi';
+import { FiPlus, FiCopy, FiCheck, FiHome, FiDollarSign, FiClock } from 'react-icons/fi';
 
 const nominalList = [100000, 250000, 500000, 1000000, 2500000, 5000000];
 
@@ -172,7 +172,7 @@ export default function Topup() {
 
       {profile && (
         <div className="card flex items-center gap-3">
-          <FiWallet className="w-5 h-5 text-primary-600" />
+          <FiDollarSign className="w-5 h-5 text-primary-600" />
           <div>
             <p className="text-xs text-gray-500">Saldo kamu</p>
             <p className="font-bold">${(profile.balance || 0).toFixed(2)}</p>
