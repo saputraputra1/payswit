@@ -64,6 +64,7 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     userData,
+    profile: userData ? { ...userData, id: userData.uid } : null,
     loading,
     register,
     login,
