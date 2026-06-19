@@ -9,6 +9,7 @@ const PLANS = {
   standard: {
     name: 'Standard',
     fee: 15000,
+    kursBonus: 0,
     icon: FiZap,
     color: 'from-blue-500 to-cyan-500',
     borderColor: 'border-blue-500',
@@ -18,13 +19,14 @@ const PLANS = {
   },
   premium: {
     name: 'Premium',
-    fee: 27000,
+    fee: 20000,
+    kursBonus: 1000,
     icon: FiStar,
     color: 'from-yellow-500 to-orange-500',
     borderColor: 'border-yellow-500',
     bgColor: 'bg-yellow-500/10',
     textColor: 'text-yellow-400',
-    desc: 'Proses kilat 15-30 menit',
+    desc: 'Proses 15-30 menit',
   },
 }
 
@@ -60,9 +62,10 @@ export default function CreditCard() {
   }
 
   const selectedPlan = PLANS[plan]
+  const effectiveKurs = rates ? rates.usdToIdr + selectedPlan.kursBonus : 0
   const ccFee = amountUSD ? (parseFloat(amountUSD) * 0.04) : 0
   const totalUSD = amountUSD ? (parseFloat(amountUSD) + ccFee) : 0
-  const totalIDR = rates ? (totalUSD * rates.usdToIdr) + selectedPlan.fee : selectedPlan.fee
+  const totalIDR = rates ? (totalUSD * effectiveKurs) + selectedPlan.fee : selectedPlan.fee
 
   async function handleSubmit(e) {
     e.preventDefault()

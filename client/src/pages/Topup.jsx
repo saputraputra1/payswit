@@ -9,24 +9,26 @@ const PLANS = {
   standard: {
     name: 'Standard',
     fee: 15000,
+    kursBonus: 0,
     icon: FiZap,
     color: 'from-blue-500 to-cyan-500',
     borderColor: 'border-blue-500',
     bgColor: 'bg-blue-500/10',
     textColor: 'text-blue-400',
     desc: 'Proses 1-24 jam',
-    features: ['Verifikasi manual', 'Proses 1-24 jam', 'Support CS'],
+    features: ['Verifikasi manual', 'Proses 1-24 jam', 'Kurs normal'],
   },
   premium: {
     name: 'Premium',
-    fee: 27000,
+    fee: 20000,
+    kursBonus: 1000,
     icon: FiStar,
     color: 'from-yellow-500 to-orange-500',
     borderColor: 'border-yellow-500',
     bgColor: 'bg-yellow-500/10',
     textColor: 'text-yellow-400',
-    desc: 'Proses kilat 15-30 menit',
-    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Support CS 24/7', 'Kurs lebih baik'],
+    desc: 'Proses 15-30 menit',
+    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Kurs +Rp 1.000/USD'],
   },
 }
 
@@ -53,7 +55,8 @@ export default function Topup() {
   }, [])
 
   const selectedPlan = PLANS[plan]
-  const estimatedUSD = amountIDR && rates ? (parseFloat(amountIDR) / rates.usdToIdr).toFixed(2) : '0'
+  const effectiveKurs = rates ? rates.usdToIdr + selectedPlan.kursBonus : 0
+  const estimatedUSD = amountIDR && rates ? (parseFloat(amountIDR) / effectiveKurs).toFixed(2) : '0'
   const totalPay = amountIDR ? (parseFloat(amountIDR) + selectedPlan.fee).toLocaleString('id-ID') : '0'
 
   function copyText(text, field) {
@@ -71,7 +74,7 @@ export default function Topup() {
     try {
       const res = await api.post('/transactions', {
         type: 'topup', amountIDR: parseFloat(amountIDR),
-        amountUSD: parseFloat(amountIDR) / rates.usdToIdr,
+        amountUSD: parseFloat(amountIDR) / effectiveKurs,
         paypalEmail, paymentMethod, plan,
         adminFee: selectedPlan.fee,
         totalPay: parseFloat(amountIDR) + selectedPlan.fee,

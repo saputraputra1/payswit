@@ -9,24 +9,26 @@ const PLANS = {
   standard: {
     name: 'Standard',
     fee: 15000,
+    kursBonus: 0,
     icon: FiZap,
     color: 'from-blue-500 to-cyan-500',
     borderColor: 'border-blue-500',
     bgColor: 'bg-blue-500/10',
     textColor: 'text-blue-400',
     desc: 'Proses 1-24 jam',
-    features: ['Verifikasi manual', 'Proses 1-24 jam'],
+    features: ['Verifikasi manual', 'Proses 1-24 jam', 'Kurs normal'],
   },
   premium: {
     name: 'Premium',
-    fee: 27000,
+    fee: 20000,
+    kursBonus: 1000,
     icon: FiStar,
     color: 'from-yellow-500 to-orange-500',
     borderColor: 'border-yellow-500',
     bgColor: 'bg-yellow-500/10',
     textColor: 'text-yellow-400',
-    desc: 'Proses kilat 15-30 menit',
-    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Kurs lebih baik'],
+    desc: 'Proses 15-30 menit',
+    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Kurs +Rp 1.000/USD'],
   },
 }
 
@@ -50,7 +52,8 @@ export default function Convert() {
   }, [])
 
   const selectedPlan = PLANS[plan]
-  const estimatedIDR = amountUSD && rates ? (parseFloat(amountUSD) * rates.usdToIdr) : 0
+  const effectiveKurs = rates ? rates.usdToIdr + selectedPlan.kursBonus : 0
+  const estimatedIDR = amountUSD && rates ? (parseFloat(amountUSD) * effectiveKurs) : 0
   const totalReceive = estimatedIDR - selectedPlan.fee
 
   function copyText(text, field) {
@@ -127,7 +130,7 @@ export default function Convert() {
             {rates && (
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
                 <FiDollarSign className="text-blue-400 flex-shrink-0" />
-                <p className="text-xs sm:text-sm text-blue-300">Kurs: <span className="font-bold">1 USD = Rp {rates.usdToIdr?.toLocaleString('id-ID')}</span></p>
+                <p className="text-xs sm:text-sm text-blue-300">Kurs: <span className="font-bold">1 USD = Rp {effectiveKurs?.toLocaleString('id-ID')}</span> {selectedPlan.kursBonus > 0 && <span className="text-green-400">(+{selectedPlan.kursBonus.toLocaleString('id-ID')})</span>}</p>
               </div>
             )}
           </div>
