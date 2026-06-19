@@ -8,7 +8,7 @@ import { BankIcon, PaymentMethodIcon } from '../components/Icons'
 const PLANS = {
   standard: {
     name: 'Standard',
-    fee: 15000,
+    fee: 20000,
     kursBonus: 0,
     icon: FiZap,
     color: 'from-blue-500 to-cyan-500',
@@ -16,10 +16,10 @@ const PLANS = {
     bgColor: 'bg-blue-500/10',
     textColor: 'text-blue-400',
     desc: 'Proses 1-24 jam',
-    features: ['Verifikasi manual', 'Proses 1-24 jam', 'Kurs normal'],
+    features: ['Verifikasi manual', 'Proses 1-24 jam', 'Biaya Rp 20.000'],
   },
   premium: {
-    name: 'Premium',
+    name: 'Priority',
     fee: 15000,
     kursBonus: 1000,
     icon: FiStar,
@@ -28,7 +28,7 @@ const PLANS = {
     bgColor: 'bg-yellow-500/10',
     textColor: 'text-yellow-400',
     desc: 'Proses 15-30 menit',
-    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Kurs +Rp 1.000/USD'],
+    features: ['Verifikasi prioritas', 'Proses 15-30 menit', 'Biaya Rp 15.000', 'Kurs +Rp 1.000/USD'],
   },
 }
 

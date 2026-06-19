@@ -8,7 +8,7 @@ import { BankIcon } from '../components/Icons'
 const PLANS = {
   standard: {
     name: 'Standard',
-    fee: 15000,
+    fee: 20000,
     kursBonus: 0,
     icon: FiZap,
     color: 'from-blue-500 to-cyan-500',
@@ -18,7 +18,7 @@ const PLANS = {
     desc: 'Proses 1-24 jam',
   },
   premium: {
-    name: 'Premium',
+    name: 'Priority',
     fee: 15000,
     kursBonus: 1000,
     icon: FiStar,
